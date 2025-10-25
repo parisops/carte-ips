@@ -53,12 +53,16 @@ Promise.all([
 
   ecoles = [];
 
-  ipsEcoles.forEach(e => {
-    let uai = e.uai || e.numero_uai;
-    if (!e.ips_etab) return;
-    let ipsValue = parseFloat(e.ips_etab);
-    if (isNaN(ipsValue)) return;
-    let loc = locMap.get(uai) || {};
+ipsEcoles.forEach(e => {
+  let uai = (e.uai || e.numero_uai || '').toUpperCase();
+  if (!e.ips_etab) return;
+  let ipsValue = parseFloat(e.ips_etab);
+  if (isNaN(ipsValue)) return;
+  let loc = locMap.get(uai);
+  if (!loc) {
+    console.warn("Localisation manquante UAI:", uai);
+    return;
+  }
     let eff = effMap.get(uai) || {};
     ecoles.push({
       numero_uai: uai,
