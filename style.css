@@ -1,16 +1,28 @@
-body { margin: 0; font-family: Arial, sans-serif; }
-#map { width: 100vw; height: 95vh; }
-.leaflet-sidebar-header { font-size: 1.2em; margin: 0.6em 0; }
-.legend-square {
-  width: 16px; height: 16px; display: inline-block; margin-right: 6px;
-  vertical-align: middle; border: 1px solid #666;
+/* style.css */
+body {
+  margin: 0; font-family: Arial, sans-serif;
 }
-.legend-red { background-color: #d32f2f; }
-.legend-orange { background-color: #f57c00; }
-.legend-yellow { background-color: #fbc02d; }
-.legend-lightgreen { background-color: #aed581; }
-.legend-darkgreen { background-color: #388e3c; }
-
+#map {
+  height: 95vh;
+  width: 100vw;
+}
+.leaflet-sidebar-header {
+  font-size: 1.3em;
+  margin: 0.5em 0;
+}
+.legend-square {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  vertical-align: middle;
+  margin-right: 6px;
+  border: 1px solid #555;
+}
+.red { background:#d32f2f; }
+.orange { background:#f57c00; }
+.yellow { background:#fbc02d; }
+.lightgreen { background:#aed581; }
+.darkgreen { background:#388e3c; }
 .custom-marker {
   border: 2px solid white;
   box-sizing: border-box;
@@ -24,8 +36,8 @@ body { margin: 0; font-family: Arial, sans-serif; }
 }
 .custom-marker.diamond {
   transform: rotate(45deg);
-  shape-rendering: auto;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
+  display: inline-block;
 }
 .custom-marker.red { background: #d32f2f; }
 .custom-marker.orange { background: #f57c00; }
