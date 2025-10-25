@@ -1,13 +1,13 @@
 body { margin: 0; font-family: Arial, sans-serif;}
 #map { height: 95vh; width: 100vw;}
 .leaflet-sidebar-header { font-size: 1.15em; margin: 0.4em 0; }
-.legend-square { display:inline-block;width:16px;height:16px;vertical-align:middle;margin-right:4px;}
-.legend-high {background:#4caf50;}
-.legend-mid {background:#ff9800;}
-.legend-low {background:#f44336;}
-.custom-marker { border-radius:50%; width:24px; height:24px; border:2px solid #444; box-sizing:border-box;}
-.custom-marker.green { background:#4caf50;}
-.custom-marker.orange { background:#ff9800;}
-.custom-marker.red { background:#f44336;}
-.custom-marker.gray { background:#bbb;}
-.leaflet-sidebar-pane label { display:block; margin:0.6em 0 0.2em 0;}
+.legend-square { display: inline-block; width: 16px; height: 16px; vertical-align: middle; margin-right: 4px; }
+.legend-high { background: #4caf50; }
+.legend-mid { background: #ff9800; }
+.legend-low { background: #f44336; }
+.custom-marker { border-radius: 50%; width: 24px; height: 24px; border: 2px solid #444; box-sizing: border-box; }
+.custom-marker.green { background: #4caf50; }
+.custom-marker.orange { background: #ff9800; }
+.custom-marker.red { background: #f44336; }
+.custom-marker.gray { background: #bbb; }
+.leaflet-sidebar-pane label { display: block; margin: 0.6em 0 0.2em 0; }
