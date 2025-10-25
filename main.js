@@ -55,12 +55,15 @@ Promise.all([
 
   ipsEcoles.forEach(e => {
     let uai = e.uai || e.numero_uai;
+    if (!e.ips_etab) return; // skip if no ips_etab
+    let ipsValue = parseFloat(e.ips_etab);
+    if (isNaN(ipsValue)) return;
     let loc = locMap.get(uai) || {};
     let eff = effMap.get(uai) || {};
     ecoles.push({
       numero_uai: uai,
       type: 'école',
-      ips: parseFloat(e.ips),
+      ips: ipsValue,
       latitude: loc.latitude,
       longitude: loc.longitude,
       denom: loc.denomination_principale || e.denomination_principale || '',
@@ -78,11 +81,14 @@ Promise.all([
 
   ipsColleges.forEach(c => {
     let uai = c.uai || c.numero_uai;
+    if (!c.ips_etab) return;
+    let ipsValue = parseFloat(c.ips_etab);
+    if (isNaN(ipsValue)) return;
     let loc = locMap.get(uai) || {};
     ecoles.push({
       numero_uai: uai,
       type: 'collège',
-      ips: parseFloat(c.ips),
+      ips: ipsValue,
       latitude: loc.latitude,
       longitude: loc.longitude,
       denom: c.denomination_principale || '',
@@ -96,33 +102,28 @@ Promise.all([
     });
   });
 
-ipsLycees.forEach(l => {
-  let uai = l.uai || l.numero_uai;
-  let loc = locMap.get(uai) || {};
-  
-  // Choix de l'IPS à afficher : préférence 'ips_etab', sinon 'ips_voie_gt', sinon null
-  let ipsValeur = l.ips_etab || l.ips_voie_gt || null;
-  if (ipsValeur !== null) {
-    ipsValeur = parseFloat(ipsValeur);
-  }
-
-  ecoles.push({
-    numero_uai: uai,
-    type: 'lycée',
-    ips: ipsValeur,
-    latitude: loc.latitude,
-    longitude: loc.longitude,
-    denom: l.denomination_principale || '',
-    appellation: loc.appellation_officielle || '',
-    secteur: loc.secteur_public_prive_libe || 'public',
-    commune: loc.libelle_commune || '',
-    departement: loc.libelle_departement || '',
-    ips_national: l.ips_national_legt || null,
-    ips_academique: l.ips_academique_legt || null,
-    ips_departemental: l.ips_departemental_legt || null
+  ipsLycees.forEach(l => {
+    let uai = l.uai || l.numero_uai;
+    if (!l.ips_etab) return;
+    let ipsValue = parseFloat(l.ips_etab);
+    if (isNaN(ipsValue)) return;
+    let loc = locMap.get(uai) || {};
+    ecoles.push({
+      numero_uai: uai,
+      type: 'lycée',
+      ips: ipsValue,
+      latitude: loc.latitude,
+      longitude: loc.longitude,
+      denom: l.denomination_principale || '',
+      appellation: loc.appellation_officielle || '',
+      secteur: loc.secteur_public_prive_libe || 'public',
+      commune: loc.libelle_commune || '',
+      departement: loc.libelle_departement || '',
+      ips_national: l.ips_national || null,
+      ips_academique: l.ips_academique || null,
+      ips_departemental: l.ips_departemental || null
+    });
   });
-});
-
 
   afficherEcoles(ecoles);
 });
@@ -142,6 +143,9 @@ function formatPopupContent(e) {
     <div class="popup-compact-row"><span class="popup-compact-label">IPS National:</span><span class="popup-compact-value">${e.ips_national || 'NC'}</span></div>
     <div class="popup-compact-row"><span class="popup-compact-label">IPS Académique:</span><span class="popup-compact-value">${e.ips_academique || 'NC'}</span></div>
     <div class="popup-compact-row"><span class="popup-compact-label">IPS Départemental:</span><span class="popup-compact-value">${e.ips_departemental || 'NC'}</span></div>
+    <div class="popup-divider"></div>
+    <div class="popup-compact-row"><span class="popup-compact-label">Élèves:</span><span class="popup-compact-value">${e.nombre_total_eleves !== null ? e.nombre_total_eleves : 'NC'}</span></div>
+    <div class="popup-compact-row"><span class="popup-compact-label">Classes:</span><span class="popup-compact-value">${e.nombre_total_classes !== null ? e.nombre_total_classes : 'NC'}</span></div>
   `;
 }
 
