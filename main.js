@@ -99,4 +99,23 @@ function afficherPoints(data) {
     <div class="popup-info">${e.type.charAt(0).toUpperCase() + e.type.slice(1)} • ${e.secteur}</div>
     <div class="popup-info">${e.commune}, ${e.departement}</div>
     <div class="popup-divider"></div>
-    <div class="popup-main-ips" style="background-color:${colorByIps(e.ips)}33; border
+    <div class="popup-main-ips" style="background-color:${colorByIps(e.ips)}33; border:1px solid ${colorByIps(e.ips)}99;">
+      IPS : ${e.ips.toFixed(1)}
+    </div>
+    <div class="popup-compact-row"><span>Élèves :</span><span>${e.nombre_total_eleves ?? 'NC'}</span></div>
+    <div class="popup-compact-row"><span>Classes :</span><span>${e.nombre_total_classes ?? 'NC'}</span></div>
+  `);
+    markers.addLayer(marker);
+  });
+}
+
+document.getElementById('filtrer').onclick = () => {
+  const types = [...document.querySelectorAll('.type-filter:checked')].map(cb => cb.value);
+  const minIps = parseFloat(document.getElementById('ips-min').value) || 0;
+  const maxIps = parseFloat(document.getElementById('ips-max').value) || 200;
+
+  const filtered = etabs.filter(e =>
+    types.includes(e.type) && e.ips >= minIps && e.ips <= maxIps
+  );
+  afficherPoints(filtered);
+};
