@@ -8,7 +8,7 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 const sidebar = L.control.sidebar({ container: 'sidebar' }).addTo(map);
 sidebar.open('filters');
 
-let markers = L.markerClusterGroup({ maxClusterRadius: 20 });
+let markers = L.markerClusterGroup({ maxClusterRadius: 5 });
 map.addLayer(markers);
 
 function getColorByIps(ips) {
