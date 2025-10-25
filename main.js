@@ -7,7 +7,7 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 const sidebar = L.control.sidebar({ container: 'sidebar' }).addTo(map);
 sidebar.open('filters');
 
-// Clustering: groupe plus "fin"
+// Clustering avec rayon max réduit pour regroupements plus fins
 let markers = L.markerClusterGroup({ maxClusterRadius: 30 });
 map.addLayer(markers);
 
@@ -26,22 +26,32 @@ function iconByIps(ips) {
 }
 
 let ecoles = [];
+
 Promise.all([
-  fetch('data/localisations.json').then(r => r.json()),
   fetch('data/ips.json').then(r => r.json()),
+  fetch('data/localisations.json').then(r => r.json()),
   fetch('data/effectifs.json').then(r => r.json())
-]).then(([localisations, ips, effectifs]) => {
-  ecoles = localisations.map(loc => {
-    const uai = loc.numero_uai;
-    const ecole_ips = ips.find(i => (i.uai || i.numero_uai) === uai);
-    const ecole_effectif = effectifs.find(e => (e.numero_ecole || e.numero_uai) === uai);
+]).then(([ipsData, localisations, effectifs]) => {
+  // Mapper localisations et effectifs par UAI pour accès rapide
+  const locMap = new Map(localisations.map(e => [e.numero_uai, e]));
+  const effMap = new Map(effectifs.map(e => [e.numero_ecole || e.numero_uai, e]));
+
+  // Ne garder que les écoles présentes dans ips.json
+  ecoles = ipsData.map(ip => {
+    const uai = ip.uai || ip.numero_uai;
+    const loc = locMap.get(uai) || {};
+    const eff = effMap.get(uai) || {};
     return {
-      ...loc,
-      ips: ecole_ips && ecole_ips.ips ? parseFloat(ecole_ips.ips) : null,
-      denomination_principale: loc.denomination_principale || (ecole_effectif && ecole_effectif.denomination_principale),
-      nombre_total_eleves: ecole_effectif ? ecole_effectif.nombre_total_eleves : null
+      numero_uai: uai,
+      ips: ip.ips ? parseFloat(ip.ips) : null,
+      latitude: loc.latitude,
+      longitude: loc.longitude,
+      denomination_principale: loc.denomination_principale || eff.denomination_principale || "",
+      nombre_total_eleves: eff.nombre_total_eleves || null,
+      appellation_officielle: loc.appellation_officielle || "",
     };
   });
+
   afficherEcoles(ecoles);
 });
 
@@ -52,7 +62,7 @@ function afficherEcoles(objets) {
       let marker = L.marker([ecole.latitude, ecole.longitude], {
         icon: iconByIps(ecole.ips)
       }).bindPopup(
-        `<b>${ecole.appellation_officielle || ecole.denomination_principale}</b><br>UAI: ${ecole.numero_uai || ""}<br>IPS: ${ecole.ips !== null ? ecole.ips : "NC"}<br>Élèves: ${ecole.nombre_total_eleves || "NC"}`
+        `<b>${ecole.appellation_officielle || ecole.denomination_principale}</b><br>UAI: ${ecole.numero_uai}<br>IPS: ${ecole.ips !== null ? ecole.ips : "NC"}<br>Élèves: ${ecole.nombre_total_eleves || "NC"}`
       );
       markers.addLayer(marker);
     }
