@@ -1,46 +1,58 @@
-/* style.css */
 body {
-  margin: 0; font-family: Arial, sans-serif;
+  margin: 0;
+  font-family: Arial, sans-serif;
 }
+
 #map {
-  height: 95vh;
   width: 100vw;
+  height: 95vh;
 }
+
 .leaflet-sidebar-header {
   font-size: 1.3em;
   margin: 0.5em 0;
 }
-.legend-square {
-  display: inline-block;
-  width: 16px;
+
+.filter-group {
+  margin-bottom: 15px;
+}
+
+.legend-section {
+  margin-bottom: 10px;
+}
+
+.legend-color {
+  display:inline-block;
+  width: 20px;
   height: 16px;
   vertical-align: middle;
   margin-right: 6px;
-  border: 1px solid #555;
+  border: 1px solid #444;
 }
-.red { background:#d32f2f; }
-.orange { background:#f57c00; }
-.yellow { background:#fbc02d; }
-.lightgreen { background:#aed581; }
-.darkgreen { background:#388e3c; }
+
+.red { background-color: #d32f2f; }
+.orange { background-color: #f57c00; }
+.yellow { background-color: #fbc02d; }
+.lightgreen { background-color: #aed581; }
+.darkgreen { background-color: #388e3c; }
+
 .custom-marker {
   border: 2px solid white;
   box-sizing: border-box;
   width: 22px;
   height: 22px;
 }
+
 .custom-marker.circle {
   border-radius: 50%;
 }
+
 .custom-marker.square {
+  /* carré */
 }
+
 .custom-marker.diamond {
   transform: rotate(45deg);
   margin-bottom: 6px;
   display: inline-block;
 }
-.custom-marker.red { background: #d32f2f; }
-.custom-marker.orange { background: #f57c00; }
-.custom-marker.yellow { background: #fbc02d; }
-.custom-marker.lightgreen { background: #aed581; }
-.custom-marker.darkgreen { background: #388e3c; }
