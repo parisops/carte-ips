@@ -4,14 +4,10 @@
   <meta charset="UTF-8" />
   <title>Carte écoles Île-de-France</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <!-- Leaflet core -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-  <!-- MarkerCluster CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css"/>
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css"/>
-  <!-- Sidebar CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet-sidebar-v2/css/leaflet-sidebar.css"/>
-  <!-- Custom CSS -->
   <link rel="stylesheet" href="style.css"/>
 </head>
 <body>
@@ -25,13 +21,9 @@
     <div class="leaflet-sidebar-content">
       <div class="leaflet-sidebar-pane" id="filters">
         <h2 class="leaflet-sidebar-header">Filtres</h2>
-        <label>Type d'école :
-          <select id="type-select">
-            <option value="">Tous</option>
-            <option value="ECOLE PRIMAIRE PUBLIQUE">Ecole primaire</option>
-            <option value="ECOLE MATERNELLE PUBLIQUE">Maternelle</option>
-          </select>
-        </label><br>
+        <label><input type="checkbox" class="type-ecole" value="ECOLE PRIMAIRE PUBLIQUE" checked> École primaire</label>
+        <label><input type="checkbox" class="type-ecole" value="ECOLE MATERNELLE PUBLIQUE" checked> Maternelle</label>
+        <label><input type="checkbox" class="type-ecole" value="ECOLE ELEMENTAIRE PUBLIQUE" checked> Élémentaire</label>
         <label>IPS min.:
           <input type="number" id="ips-min" min="0" value="0" step="0.1">
         </label>
@@ -39,17 +31,21 @@
           <input type="number" id="ips-max" max="200" value="200" step="0.1">
         </label>
         <button id="filtrer">Filtrer</button>
+        <hr>
+        <div>
+          <h4>Légende IPS</h4>
+          <span class="legend-square legend-high"></span> IPS &gt; 120 : Haute<br>
+          <span class="legend-square legend-mid"></span> 100 ≤ IPS ≤ 120 : Moyenne<br>
+          <span class="legend-square legend-low"></span> IPS &lt; 100 : Basse<br>
+        </div>
       </div>
       <div class="leaflet-sidebar-pane" id="legend">
-        <h2 class="leaflet-sidebar-header">Légende</h2>
-        <span class="legend-square legend-high"></span> IPS &gt; 120 : Haute<br>
-        <span class="legend-square legend-mid"></span> 100 ≤ IPS ≤ 120 : Moyenne<br>
-        <span class="legend-square legend-low"></span> IPS &lt; 100 : Basse<br>
+        <h2 class="leaflet-sidebar-header">À propos</h2>
+        <p>Carte interactive établie à partir des fichiers Education nationale.<br>Coloration des points selon l’IPS de l’école.</p>
       </div>
     </div>
   </div>
   <div id="map"></div>
-  <!-- Dépendances JS -->
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
   <script src="https://unpkg.com/leaflet-sidebar-v2/js/leaflet-sidebar.min.js"></script>
