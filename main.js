@@ -8,7 +8,7 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 const sidebar = L.control.sidebar({ container: 'sidebar' }).addTo(map);
 sidebar.open('filters');
 
-let markers = L.markerClusterGroup({ maxClusterRadius: 5 });
+const markers = L.markerClusterGroup({ maxClusterRadius: 10 });
 map.addLayer(markers);
 
 function getColorByIps(ips) {
@@ -35,7 +35,7 @@ function createIcon(type, ips) {
   const shape = getShapeByType(type);
   return L.divIcon({
     className: `custom-marker ${shape} ${color}`,
-    iconSize: [18, 18]  // Taille réduite ici aussi
+    iconSize: [18, 18]
   });
 }
 
@@ -66,7 +66,13 @@ Promise.all([
       denom: loc.denomination_principale || e.denomination_principale || '',
       nombre_total_eleves: eff.nombre_total_eleves || null,
       nombre_total_classes: eff.nombre_total_classes || null,
-      appellation: loc.appellation_officielle || ''
+      appellation: loc.appellation_officielle || '',
+      secteur: loc.secteur_public_prive_libe || 'public',
+      commune: loc.libelle_commune || '',
+      departement: loc.libelle_departement || '',
+      ips_national: e.ips_national || null,
+      ips_academique: e.ips_academique || null,
+      ips_departemental: e.ips_departemental || null
     });
   });
 
@@ -80,7 +86,13 @@ Promise.all([
       latitude: loc.latitude,
       longitude: loc.longitude,
       denom: c.denomination_principale || '',
-      appellation: loc.appellation_officielle || ''
+      appellation: loc.appellation_officielle || '',
+      secteur: loc.secteur_public_prive_libe || 'public',
+      commune: loc.libelle_commune || '',
+      departement: loc.libelle_departement || '',
+      ips_national: c.ips_national || null,
+      ips_academique: c.ips_academique || null,
+      ips_departemental: c.ips_departemental || null
     });
   });
 
@@ -94,31 +106,44 @@ Promise.all([
       latitude: loc.latitude,
       longitude: loc.longitude,
       denom: l.denomination_principale || '',
-      appellation: loc.appellation_officielle || ''
+      appellation: loc.appellation_officielle || '',
+      secteur: loc.secteur_public_prive_libe || 'public',
+      commune: loc.libelle_commune || '',
+      departement: loc.libelle_departement || '',
+      ips_national: l.ips_national || null,
+      ips_academique: l.ips_academique || null,
+      ips_departemental: l.ips_departemental || null
     });
   });
 
   afficherEcoles(ecoles);
 });
 
+function formatPopupContent(e) {
+  const bgColor = getColorByIps(e.ips) + "20";
+  const borderColor = getColorByIps(e.ips) + "50";
+
+  return `
+    <div class="popup-title">${e.appellation || e.denom}</div>
+    <div class="popup-info">${e.type.charAt(0).toUpperCase() + e.type.slice(1)} • ${e.secteur}</div>
+    <div class="popup-info">${e.commune}, ${e.departement}</div>
+    <div class="popup-divider"></div>
+    <div class="popup-main-ips" style="background-color: ${bgColor}; border: 1px solid ${borderColor};">
+      IPS: ${e.ips !== null ? e.ips : 'NC'}
+    </div>
+    <div class="popup-compact-row"><span class="popup-compact-label">IPS National:</span><span class="popup-compact-value">${e.ips_national || 'NC'}</span></div>
+    <div class="popup-compact-row"><span class="popup-compact-label">IPS Académique:</span><span class="popup-compact-value">${e.ips_academique || 'NC'}</span></div>
+    <div class="popup-compact-row"><span class="popup-compact-label">IPS Départemental:</span><span class="popup-compact-value">${e.ips_departemental || 'NC'}</span></div>
+  `;
+}
+
 function afficherEcoles(data) {
   markers.clearLayers();
   data.forEach(e => {
     if (!(e.latitude && e.longitude)) return;
-    let popup = `
-      <b>${e.appellation || e.denom}</b><br/>
-      UAI: ${e.numero_uai}<br/>
-      Type: ${e.type}<br/>
-      IPS: ${e.ips}<br/>
-    `;
-    if(e.type === 'école') {
-      popup += `
-        Élèves: ${e.nombre_total_eleves !== null ? e.nombre_total_eleves : 'NC'}<br/>
-        Classes: ${e.nombre_total_classes !== null ? e.nombre_total_classes : 'NC'}<br/>`;
-    }
     let marker = L.marker([e.latitude, e.longitude], {
       icon: createIcon(e.type, e.ips)
-    }).bindPopup(popup);
+    }).bindPopup(formatPopupContent(e));
     markers.addLayer(marker);
   });
 }
