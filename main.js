@@ -55,7 +55,7 @@ Promise.all([
 
   ipsEcoles.forEach(e => {
     let uai = e.uai || e.numero_uai;
-    if (!e.ips_etab) return; // skip if no ips_etab
+    if (!e.ips_etab) return;
     let ipsValue = parseFloat(e.ips_etab);
     if (isNaN(ipsValue)) return;
     let loc = locMap.get(uai) || {};
