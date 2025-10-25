@@ -96,25 +96,33 @@ Promise.all([
     });
   });
 
-  ipsLycees.forEach(l => {
-    let uai = l.uai || l.numero_uai;
-    let loc = locMap.get(uai) || {};
-    ecoles.push({
-      numero_uai: uai,
-      type: 'lycée',
-      ips: parseFloat(l.ips),
-      latitude: loc.latitude,
-      longitude: loc.longitude,
-      denom: l.denomination_principale || '',
-      appellation: loc.appellation_officielle || '',
-      secteur: loc.secteur_public_prive_libe || 'public',
-      commune: loc.libelle_commune || '',
-      departement: loc.libelle_departement || '',
-      ips_national: l.ips_national || null,
-      ips_academique: l.ips_academique || null,
-      ips_departemental: l.ips_departemental || null
-    });
+ipsLycees.forEach(l => {
+  let uai = l.uai || l.numero_uai;
+  let loc = locMap.get(uai) || {};
+  
+  // Choix de l'IPS à afficher : préférence 'ips_etab', sinon 'ips_voie_gt', sinon null
+  let ipsValeur = l.ips_etab || l.ips_voie_gt || null;
+  if (ipsValeur !== null) {
+    ipsValeur = parseFloat(ipsValeur);
+  }
+
+  ecoles.push({
+    numero_uai: uai,
+    type: 'lycée',
+    ips: ipsValeur,
+    latitude: loc.latitude,
+    longitude: loc.longitude,
+    denom: l.denomination_principale || '',
+    appellation: loc.appellation_officielle || '',
+    secteur: loc.secteur_public_prive_libe || 'public',
+    commune: loc.libelle_commune || '',
+    departement: loc.libelle_departement || '',
+    ips_national: l.ips_national_legt || null,
+    ips_academique: l.ips_academique_legt || null,
+    ips_departemental: l.ips_departemental_legt || null
   });
+});
+
 
   afficherEcoles(ecoles);
 });
