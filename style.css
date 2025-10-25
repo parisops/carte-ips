@@ -47,8 +47,7 @@ body {
   border-radius: 50%;
 }
 
-.custom-marker.square {
-}
+.custom-marker.square {}
 
 .custom-marker.diamond {
   transform: rotate(45deg);
@@ -56,7 +55,7 @@ body {
   display: inline-block;
 }
 
-/* Popup compact styles */
+/* Styles popup compact */
 .popup-title {
   font-weight: bold;
   font-size: 1.1em;
