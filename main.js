@@ -8,71 +8,49 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 const sidebar = L.control.sidebar({ container: 'sidebar' }).addTo(map);
 sidebar.open('filters');
 
-const markers = L.markerClusterGroup({ maxClusterRadius: 10 });
+let markers = L.markerClusterGroup({ maxClusterRadius: 20 });
 map.addLayer(markers);
 
 function getColorByIps(ips) {
   if (ips === undefined || ips === null || isNaN(ips)) return 'gray';
   const v = Number(ips);
   if (v < 90) return 'red';
-  else if (v < 105) return 'orange';
-  else if (v < 120) return 'yellow';
-  else if (v < 130) return 'lightgreen';
-  else return 'darkgreen';
+  if (v < 105) return 'orange';
+  if (v < 120) return 'yellow';
+  if (v < 130) return 'lightgreen';
+  return 'darkgreen';
 }
 
 function getShapeByType(type) {
   switch (type.toLowerCase()) {
-    case 'école': return 'circle';
-    case 'ecole': return 'circle';
-    case 'collège': return 'square';
-    case 'college': return 'square';
-    case 'lycée': return 'diamond';
-    case 'lycee': return 'diamond';
+    case 'école': case 'ecole': return 'circle';
+    case 'collège': case 'college': return 'square';
+    case 'lycée': case 'lycee': return 'diamond';
     default: return 'circle';
   }
 }
 
 function createIcon(type, ips) {
-  const color = getColorByIps(ips);
-  const shape = getShapeByType(type);
   return L.divIcon({
-    className: `custom-marker ${shape} ${color}`,
+    className: `custom-marker ${getShapeByType(type)} ${getColorByIps(ips)}`,
     iconSize: [22, 22]
   });
 }
 
 let ecoles = [];
 
-function csvToObjArray(csvStr) {
-  const lines = csvStr.trim().split('\n');
-  const headers = lines.shift().split(',');
-  return lines.map(line => {
-    const parts = line.split(',');
-    const obj = {};
-    headers.forEach((h, i) => {
-      obj[h.trim()] = parts[i] ? parts[i].trim() : '';
-    });
-    return obj;
-  });
-}
-
 Promise.all([
-  fetch('data/localisations.json').then(r => r.json()),
-  fetch('data/effectifs.json').then(r => r.json()),
-  fetch('data/ips-ecoles.json').then(r => r.json()),
-  fetch('data/ips-colleges.json').then(r => r.text()),
-  fetch('data/ips-lycees.json').then(r => r.text())
-]).then(([localisations, effectifs, ipsEcoles, ipsCollegesCSV, ipsLyceesCSV]) => {
-  let ipsColleges = csvToObjArray(ipsCollegesCSV);
-  let ipsLycees = csvToObjArray(ipsLyceesCSV);
-
+  fetch('data/localisations.json').then(res => res.json()),
+  fetch('data/effectifs.json').then(res => res.json()),
+  fetch('data/ips-ecoles.json').then(res => res.json()),
+  fetch('data/ips-colleges.json').then(res => res.json()),
+  fetch('data/ips-lycees.json').then(res => res.json())
+]).then(([localisations, effectifs, ipsEcoles, ipsColleges, ipsLycees]) => {
   const locMap = new Map(localisations.map(l => [l.numero_uai, l]));
   const effMap = new Map(effectifs.map(e => [e.numero_ecole || e.numero_uai, e]));
 
   ecoles = [];
 
-  // Ecoles
   ipsEcoles.forEach(e => {
     let uai = e.uai || e.numero_uai;
     let loc = locMap.get(uai) || {};
@@ -90,32 +68,30 @@ Promise.all([
     });
   });
 
-  // Collèges
   ipsColleges.forEach(c => {
-    let uai = c.UAI || c.uai;
+    let uai = c.uai || c.numero_uai;
     let loc = locMap.get(uai) || {};
     ecoles.push({
       numero_uai: uai,
       type: 'collège',
-      ips: parseFloat(c.IPS),
+      ips: parseFloat(c.ips),
       latitude: loc.latitude,
       longitude: loc.longitude,
-      denom: c.Etablissement || '',
+      denom: c.denomination_principale || '',
       appellation: loc.appellation_officielle || ''
     });
   });
 
-  // Lycées
   ipsLycees.forEach(l => {
-    let uai = l.UAI || l.uai;
+    let uai = l.uai || l.numero_uai;
     let loc = locMap.get(uai) || {};
     ecoles.push({
       numero_uai: uai,
       type: 'lycée',
-      ips: parseFloat(l.IPS),
+      ips: parseFloat(l.ips),
       latitude: loc.latitude,
       longitude: loc.longitude,
-      denom: l.Etablissement || '',
+      denom: l.denomination_principale || '',
       appellation: loc.appellation_officielle || ''
     });
   });
@@ -131,13 +107,11 @@ function afficherEcoles(data) {
       <b>${e.appellation || e.denom}</b><br/>
       UAI: ${e.numero_uai}<br/>
       Type: ${e.type}<br/>
-      IPS: ${e.ips}<br/>
-    `;
-    if (e.type === 'école') {
+      IPS: ${e.ips}<br/>`;
+    if(e.type === 'école') {
       popup += `
         Élèves: ${e.nombre_total_eleves !== null ? e.nombre_total_eleves : 'NC'}<br/>
-        Classes: ${e.nombre_total_classes !== null ? e.nombre_total_classes : 'NC'}<br/>
-      `;
+        Classes: ${e.nombre_total_classes !== null ? e.nombre_total_classes : 'NC'}<br/>`;
     }
     let marker = L.marker([e.latitude, e.longitude], {
       icon: createIcon(e.type, e.ips)
@@ -147,14 +121,12 @@ function afficherEcoles(data) {
 }
 
 document.getElementById('filtrer').onclick = () => {
-  const checkedTypes = Array.from(document.querySelectorAll('.type-filter:checked')).map(cb => cb.value);
+  const selectedTypes = Array.from(document.querySelectorAll('.type-filter:checked')).map(cb => cb.value);
   const minIps = parseFloat(document.getElementById('ips-min').value) || 0;
   const maxIps = parseFloat(document.getElementById('ips-max').value) || 200;
 
-  const filtered = ecoles.filter(e =>
-    checkedTypes.includes(e.type) &&
+  const filtered = ecoles.filter(e => selectedTypes.includes(e.type) &&
     e.ips >= minIps &&
-    e.ips <= maxIps
-  );
+    e.ips <= maxIps);
   afficherEcoles(filtered);
 };
