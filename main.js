@@ -8,17 +8,17 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 const sidebar = L.control.sidebar({ container: 'sidebar' }).addTo(map);
 sidebar.open('filters');
 
-let markers = L.markerClusterGroup({ maxClusterRadius: 5 });
+let markers = L.markerClusterGroup({ maxClusterRadius: 20 });
 map.addLayer(markers);
 
 function getColorByIps(ips) {
   if (ips === undefined || ips === null || isNaN(ips)) return 'gray';
   const v = Number(ips);
   if (v < 90) return 'red';
-  if (v < 105) return 'orange';
-  if (v < 120) return 'yellow';
-  if (v < 130) return 'lightgreen';
-  return 'darkgreen';
+  else if (v < 105) return 'orange';
+  else if (v < 120) return 'yellow';
+  else if (v < 130) return 'lightgreen';
+  else return 'darkgreen';
 }
 
 function getShapeByType(type) {
@@ -31,21 +31,23 @@ function getShapeByType(type) {
 }
 
 function createIcon(type, ips) {
+  const color = getColorByIps(ips);
+  const shape = getShapeByType(type);
   return L.divIcon({
-    className: `custom-marker ${getShapeByType(type)} ${getColorByIps(ips)}`,
-    iconSize: [22, 22]
+    className: `custom-marker ${shape} ${color}`,
+    iconSize: [18, 18]  // Taille réduite ici aussi
   });
 }
 
 let ecoles = [];
 
 Promise.all([
-  fetch('data/localisations.json').then(res => res.json()),
-  fetch('data/effectifs.json').then(res => res.json()),
-  fetch('data/ips-ecoles.json').then(res => res.json()),
-  fetch('data/ips-colleges.json').then(res => res.json()),
-  fetch('data/ips-lycees.json').then(res => res.json())
-]).then(([localisations, effectifs, ipsEcoles, ipsColleges, ipsLycees]) => {
+  fetch('data/ips-ecoles.json').then(r => r.json()),
+  fetch('data/ips-colleges.json').then(r => r.json()),
+  fetch('data/ips-lycees.json').then(r => r.json()),
+  fetch('data/localisations.json').then(r => r.json()),
+  fetch('data/effectifs.json').then(r => r.json())
+]).then(([ipsEcoles, ipsColleges, ipsLycees, localisations, effectifs]) => {
   const locMap = new Map(localisations.map(l => [l.numero_uai, l]));
   const effMap = new Map(effectifs.map(e => [e.numero_ecole || e.numero_uai, e]));
 
@@ -107,7 +109,8 @@ function afficherEcoles(data) {
       <b>${e.appellation || e.denom}</b><br/>
       UAI: ${e.numero_uai}<br/>
       Type: ${e.type}<br/>
-      IPS: ${e.ips}<br/>`;
+      IPS: ${e.ips}<br/>
+    `;
     if(e.type === 'école') {
       popup += `
         Élèves: ${e.nombre_total_eleves !== null ? e.nombre_total_eleves : 'NC'}<br/>
@@ -125,7 +128,8 @@ document.getElementById('filtrer').onclick = () => {
   const minIps = parseFloat(document.getElementById('ips-min').value) || 0;
   const maxIps = parseFloat(document.getElementById('ips-max').value) || 200;
 
-  const filtered = ecoles.filter(e => selectedTypes.includes(e.type) &&
+  const filtered = ecoles.filter(e =>
+    selectedTypes.includes(e.type) &&
     e.ips >= minIps &&
     e.ips <= maxIps);
   afficherEcoles(filtered);
