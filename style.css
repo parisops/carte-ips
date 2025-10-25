@@ -37,10 +37,10 @@ body {
 .darkgreen { background-color: #388e3c; }
 
 .custom-marker {
-  border: 2px solid white;
+  border: 1px solid white;
   box-sizing: border-box;
-  width: 18px; /* Réduction de la taille */
-  height: 18px;
+  width: 12px; /* Réduction de la taille */
+  height: 12px;
 }
 
 .custom-marker.circle {
