@@ -1,203 +1,172 @@
 body {
-    margin: 0;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: #f9f9f9;
-    color: #333;
+  margin: 0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: #ffffff;
+  color: #333;
 }
-
 #map {
-    width: 100vw;
-    height: 100vh;
+  width: 100vw;
+  height: 100vh;
 }
-
 .leaflet-sidebar-tabs ul {
-    background: #2c3e50;
+  background: #34495e;
 }
-
 .leaflet-sidebar-tabs ul li a {
-    color: #ecf0f1;
-    padding: 12px 15px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    border-radius: 4px 4px 0 0;
+  color: #ecf0f1;
+  padding: 12px 16px;
+  font-weight: 700;
+  text-transform: uppercase;
 }
-
 .leaflet-sidebar-pane {
-    padding: 15px 20px;
-    font-size: 14px;
-    line-height: 1.3em;
-    background: white;
-    box-shadow: 0 6px 8px rgba(0,0,0,0.1);
-    border-radius: 0 0 4px 4px;
+  padding: 16px;
+  background: #fafafa;
+  box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+  border-radius: 8px;
+  font-size: 14px;
 }
-
 .sidebar-header {
-    font-weight: 700;
-    font-size: 18px;
-    margin-bottom: 15px;
-    border-bottom: 1px solid #dee2e6;
-    padding-bottom: 8px;
-    color: #2c3e50;
+  font-weight: 700;
+  font-size: 18px;
+  margin-bottom: 15px;
+  border-bottom: 1px solid #ddd;
+  padding-bottom: 8px;
+  color: #2c3e50;
 }
-
 .filter-group {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    margin-bottom: 20px;
+  margin-bottom: 18px;
 }
-
-.checkbox-label {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    cursor: pointer;
-    user-select: none;
+.filter-group label {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+  cursor: pointer;
+  font-weight: 600;
 }
-
+.filter-group label input[type="checkbox"] {
+  margin-right: 8px;
+  width: 16px;
+  height: 16px;
+}
 .ips-filter label {
-    display: flex;
-    justify-content: space-between;
-    font-weight: 600;
+  justify-content: space-between;
 }
-
 .ips-filter input {
-    width: 70px;
-    padding: 4px 6px;
-    border: 1px solid #ccc;
-    border-radius: 6px;
-    font-size: 14px;
-    margin-left: 8px;
+  width: 70px;
+  padding: 4px 6px;
+  font-size: 14px;
+  letter-spacing: normal;
+  border-radius: 6px;
+  border: 1px solid #aaa;
+  margin-left: 8px;
 }
-
 .btn-primary {
-    background-color: #3498db;
-    border: none;
-    padding: 10px 16px;
-    color: white;
-    font-weight: 600;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
+  padding: 11px 18px;
+  background-color: #2980b9;
+  border: none;
+  border-radius: 8px;
+  color: white;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
 }
-
 .btn-primary:hover {
-    background-color: #2980b9;
+  background-color: #1f6391;
 }
-
 .legend-section {
-    margin-bottom: 10px;
-    font-size: 13px;
-    color: #444;
+  font-size: 13px;
+  color: #444;
+  margin-top: 7px;
 }
-
 .legend-marker {
-    display: inline-block;
-    width: 14px;
-    height: 14px;
-    border: 1.5px solid white;
-    box-sizing: border-box;
-    margin-right: 8px;
-    vertical-align: middle;
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid white;
+  box-sizing: border-box;
+  margin-right: 8px;
+  vertical-align: middle;
 }
-
 .legend-marker.circle {
-    border-radius: 50%;
-    background: #444;
+  border-radius: 50%;
+  background: #444;
 }
-
 .legend-marker.square {
-    background: #444;
+  background: #444;
 }
-
 .legend-marker.diamond {
-    transform: rotate(45deg);
-    background: #444;
-    display: inline-block;
-    margin-bottom: -2px;
+  background: #444;
+  transform: rotate(45deg);
+  display: inline-block;
+  margin-bottom: -2px;
 }
-
 .legend-color {
-    width: 16px;
-    height: 16px;
-    border: 1px solid #444;
-    display: inline-block;
-    vertical-align: middle;
-    margin-right: 8px;
-    border-radius: 4px;
+  width: 16px;
+  height: 16px;
+  border: 1px solid #444;
+  display: inline-block;
+  border-radius: 5px;
+  vertical-align: middle;
+  margin-right: 8px;
 }
-
 .red { background-color: #e74c3c; }
 .orange { background-color: #e67e22; }
 .yellow { background-color: #f1c40f; }
 .lightgreen { background-color: #2ecc71; }
 .darkgreen { background-color: #27ae60; }
-
 .custom-marker {
-    width: 14px;
-    height: 14px;
-    border-radius: 3px;
-    border: 1.25px solid white;
-    box-sizing: border-box;
+  width: 14px;
+  height: 14px;
+  border-radius: 2.5px;
+  border: 1.5px solid white;
+  box-sizing: border-box;
 }
-
 .custom-marker.circle {
-    border-radius: 50%;
+  border-radius: 50%;
 }
-
-.custom-marker.square {}
-
+.custom-marker.square {
+}
 .custom-marker.diamond {
-    transform: rotate(45deg);
-    margin-bottom: 3px;
-    display: inline-block;
+  transform: rotate(45deg);
+  margin-bottom: 3px;
+  display: inline-block;
 }
-
 .leaflet-popup-content {
-    width: 240px;
-    font-size: 13px;
-    line-height: 1.3em;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  width: 243px;
+  font-size: 13px;
+  line-height: 1.3em;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
-
 .popup-title {
-    font-weight: 700;
-    font-size: 1.15em;
-    margin-bottom: 6px;
-    color: #2c3e50;
+  font-weight: 700;
+  font-size: 15px;
+  margin-bottom: 6px;
+  color: #2c3e50;
 }
-
 .popup-info {
-    margin-bottom: 4px;
-    color: #555;
+  margin-bottom: 4px;
+  color: #555;
 }
-
 .popup-divider {
-    height: 1px;
-    background-color: #ccc;
-    margin: 8px 0;
+  height: 1px;
+  background-color: #ccc;
+  margin: 8px 0;
 }
-
 .popup-main-ips {
-    font-weight: 700;
-    padding: 6px 8px;
-    border-radius: 6px;
-    margin-bottom: 10px;
+  font-weight: 700;
+  padding: 5px 10px;
+  border-radius: 8px;
+  margin-bottom: 10px;
 }
-
 .popup-compact-row {
-    display: flex;
-    justify-content: space-between;
-    font-size: 13px;
-    margin: 3px 0;
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  margin: 3px 0;
 }
-
 .popup-compact-label {
-    font-weight: 600;
-    color: #444;
+  font-weight: 600;
+  color: #444;
 }
-
 .popup-compact-value {
-    color: #555;
+  color: #555;
 }
