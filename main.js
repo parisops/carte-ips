@@ -9,7 +9,7 @@ const sidebar = L.control.sidebar({ container: 'sidebar' }).addTo(map);
 sidebar.open('filters');
 
 const clusterOptions = {
-  maxClusterRadius: 5,
+  maxClusterRadius: 3,  // encore plus serré
   spiderfyOnMaxZoom: true,
   showCoverageOnHover: false,
 };
@@ -118,27 +118,27 @@ function afficherPoints(data) {
     displayedMarkers.push(marker);
   });
 }
+
 function capitalize(s) {
   if (!s) return s;
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
+
 function getSizeByZoom(zoom) {
   const minZoom = 5;
   const maxZoom = 18;
-  const minSize = 8;
+  const minSize = 6;
   const maxSize = 18;
   if (zoom <= minZoom) return minSize;
   if (zoom >= maxZoom) return maxSize;
-  return minSize + (zoom - minZoom) / (maxZoom - minZoom) * (maxSize - minSize);
+  return minSize + ((zoom - minZoom) / (maxZoom - minZoom)) * (maxSize - minSize);
 }
 
 map.on('zoomend', () => {
   const zoom = map.getZoom();
   const size = getSizeByZoom(zoom);
   displayedMarkers.forEach(marker => {
-    const latlng = marker.getLatLng();
     const popupContent = marker.getPopup().getContent();
-    // Extrait type et ips depuis le contenu popup (simple RegEx)
     const typeMatch = popupContent.match(/<div class="popup-info">([^<]+) •/);
     const ipsMatch = popupContent.match(/IPS\s*:\s*([\d\.]+)/);
     if (!typeMatch || !ipsMatch) return;
