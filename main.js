@@ -1,142 +1,102 @@
-// Initialisation de la carte et de la vue
 const map = L.map('map').setView([48.85, 2.35], 10);
+
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: '&copy; OpenStreetMap',
-  maxZoom: 18
+  maxZoom: 18,
 }).addTo(map);
 
 const sidebar = L.control.sidebar({ container: 'sidebar' }).addTo(map);
 sidebar.open('filters');
 
-const clusterOptions = {
-  maxClusterRadius: 15,
-  spiderfyOnMaxZoom: true,
-  showCoverageOnHover: false
-};
-const markers = L.markerClusterGroup(clusterOptions);
+const markers = L.markerClusterGroup({ maxClusterRadius: 15 });
 map.addLayer(markers);
 
-// Styles de couleurs en fonction de l'IPS
 function colorByIps(ips) {
-  if (!ips || isNaN(ips)) return '#999';
-  if (ips < 90) return '#e74c3c';       // rouge
-  if (ips < 105) return '#f39c12';      // orange
-  if (ips < 120) return '#f1c40f';      // jaune
-  if (ips < 130) return '#27ae60';      // vert clair
-  return '#2c3e50';                     // vert foncé
+  if (!ips || isNaN(ips)) return '#777';
+  if (ips < 90) return '#e74c3c';
+  if (ips < 105) return '#e67e22';
+  if (ips < 120) return '#f1c40f';
+  if (ips < 130) return '#2ecc71';
+  return '#27ae60';
 }
 
-// Forme du marqueur selon le type
 function shapeByType(type) {
-  switch ((type || '').toLowerCase()) {
-    case 'école': return 'circle';
-    case 'collège': return 'square';
-    case 'lycée': return 'diamond';
+  if (!type) return 'circle';
+  switch (type.toLowerCase()) {
+    case 'école': case 'ecole': return 'circle';
+    case 'collège': case 'college': return 'square';
+    case 'lycée': case 'lycee': return 'diamond';
     default: return 'circle';
   }
 }
 
-// Création d'une icône personnalisée
 function createIcon(type, ips) {
-  const color = colorByIps(ips);
-  const shape = shapeByType(type);
   return L.divIcon({
-    className: `custom-marker ${shape}`,
-    html: `<div style="background:${color};"></div>`,
-    iconSize: [14,14],
-    className: `marker-${shape} color-${color}`
+    className: `custom-marker ${shapeByType(type)}`,
+    iconSize: [14, 14],
+    html: `<div style="background-color: ${colorByIps(ips)}; width: 14px; height: 14px; border-radius:${shapeByType(type)==='circle'?'50%':'0px'}; transform: ${shapeByType(type)==='diamond'?'rotate(45deg)':'none'};"></div>`
   });
 }
 
-// Fonction principale pour charger et fusionner les données
-async function loadData() {
-  const [ipsEcoles, ipsColleges, ipsLycees, localisations, effectifs] = await Promise.all([
-    fetch('data/ips-ecoles.json').then(r => r.json()),
-    fetch('data/ips-colleges.json').then(r => r.json()),
-    fetch('data/ips-lycees.json').then(r => r.json()),
-    fetch('data/localisations.json').then(r => r.json()),
-    fetch('data/effectifs.json').then(r => r.json())
-  ]);
+let etabs = [];
+
+Promise.all([
+  fetch('data/ips-ecoles.json').then(r => r.json()),
+  fetch('data/ips-colleges.json').then(r => r.json()),
+  fetch('data/ips-lycees.json').then(r => r.json()),
+  fetch('data/localisations.json').then(r => r.json()),
+  fetch('data/effectifs.json').then(r => r.json())
+]).then(([ipsEcoles, ipsColleges, ipsLycees, localisations, effectifs]) => {
   const locMap = new Map(localisations.map(l => [l.numero_uai.trim().toUpperCase(), l]));
-  const effMap = new Map(effectifs.map(e => [e.numero_uai.trim().toUpperCase() || e.numero_uai.trim().toUpperCase(), e]));
+  const effMap = new Map(effectifs.map(e => [((e.numero_ecole || e.numero_uai) || '').trim().toUpperCase(), e]));
 
-  // Fusion des données
-  const etablissements = [];
-
-  // Fonction de fusion
-  function mergeData(data, type, ipsField) {
-    data.forEach(e => {
+  function merge(data, type, ipsField) {
+    return data.flatMap(e => {
       const uai = (e.uai || e.numero_uai || '').trim().toUpperCase();
       const loc = locMap.get(uai);
-      if (!loc || typeof loc.latitude !== 'number' || typeof loc.longitude !== 'number') return;
+      if (!loc || !loc.latitude || !loc.longitude) return [];
       let ipsVal = e[ipsField];
-      if (ipsVal === undefined || ipsVal === null || ipsVal === "") return;
+      if (ipsVal === null || ipsVal === undefined || ipsVal === '') return [];
       ipsVal = parseFloat(ipsVal);
-      if (isNaN(ipsVal)) return; // skip si pas IPS
+      if (isNaN(ipsVal)) return [];
       const eff = effMap.get(uai) || {};
-      etablissements.push({
+      return [{
         uai,
         type,
         ips: ipsVal,
-        lat: loc.latitude,
-        lon: loc.longitude,
+        latitude: loc.latitude,
+        longitude: loc.longitude,
         denom: loc.denomination_principale || e.denomination_principale || '',
-        effEleves: eff.nombre_total_eleves,
-        effClasses: eff.nombre_total_classes,
-        commune: loc.libelle_commune,
-        dept: loc.libelle_departement
-      });
+        appellation: loc.appellation_officielle || '',
+        secteur: loc.secteur_public_prive_libe || 'Public',
+        commune: loc.libelle_commune || '',
+        departement: loc.libelle_departement || '',
+        nombre_total_eleves: eff.nombre_total_eleves || null,
+        nombre_total_classes: eff.nombre_total_classes || null,
+        ips_national: e.ips_national,
+        ips_academique: e.ips_academique,
+        ips_departemental: e.ips_departemental,
+      }];
     });
   }
 
-  // Charger données
-  mergeData(ipsEcoles, 'école', 'ips');
-  mergeData(ipsColleges, 'collège', 'ips');
-  mergeData(ipsLycees, 'lycée', 'ips_etab');
+  etabs = [
+    ...merge(ipsEcoles, 'école', 'ips'),
+    ...merge(ipsColleges, 'collège', 'ips'),
+    ...merge(ipsLycees, 'lycée', 'ips_etab')
+  ];
 
-  return etablissements;
-}
+  afficherPoints(etabs);
+});
 
-// Affichage des points
-async function display() {
-  const etablissements = await loadData();
+function afficherPoints(data) {
   markers.clearLayers();
-  etablissements.forEach(e => {
-    const icon = createIcon(e.type, e.ips);
-    const marker = L.marker([e.lat, e.lon], { icon }).bindPopup(
-      `<div style="font-family:Arial;font-size:13px;">
-        <div style="font-weight:700;font-size:14px;">${e.denom}</div>
-        <div style="font-size:13px;">${e.type} - ${e.commune}</div>
-        <div style="font-size:13px;">IPS: ${e.ips.toFixed(1)}</div>
-        <div>Élèves: ${e.effEleves || 'N/A'}, Classes: ${e.effClasses || 'N/A'}</div>
-      </div>`
-    );
-    markers.addLayer(marker);
-  });
-}
-display();
-
-document.getElementById('filtrer').onclick = () => {
-  const types = [...document.querySelectorAll('.type-filter:checked')].map(cb => cb.value);
-  const minIps = parseFloat(document.getElementById('ips-min').value) || 0;
-  const maxIps = parseFloat(document.getElementById('ips-max').value) || 200;
-  markers.clearLayers();
-  loadData().then(effects => {
-    const filtered = effects.filter(e => 
-      types.includes(e.type) &&
-      e.ips >= minIps && e.ips <= maxIps
-    );
-    filtered.forEach(e => {
-      const icon = createIcon(e.type, e.ips);
-      const marker = L.marker([e.lat, e.lon], { icon }).bindPopup(
-        `<div style="font-family:Arial;font-size:13px;">
-          <div style="font-weight:700;font-size:14px;">${e.denom}</div>
-          <div style="font-size:13px;">${e.type} - ${e.commune}</div>
-          <div style="font-size:13px;">IPS: ${e.ips.toFixed(1)}</div>
-          <div>Élèves: ${e.effEleves || 'N/A'}, Classes: ${e.effClasses || 'N/A'}</div>
-        </div>`
-      );
-      markers.addLayer(marker);
-    });
-  });
-};
+  data.forEach(e => {
+    const marker = L.marker([e.latitude, e.longitude], {
+      icon: createIcon(e.type, e.ips)
+    }).bindPopup(`
+    <div class="popup-title">${e.appellation || e.denom}</div>
+    <div class="popup-info">${e.type.charAt(0).toUpperCase() + e.type.slice(1)} • ${e.secteur}</div>
+    <div class="popup-info">${e.commune}, ${e.departement}</div>
+    <div class="popup-divider"></div>
+    <div class="popup-main-ips" style="background-color:${colorByIps(e.ips)}33; border
