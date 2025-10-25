@@ -9,7 +9,7 @@ const sidebar = L.control.sidebar({ container: 'sidebar' }).addTo(map);
 sidebar.open('filters');
 
 const clusterOptions = {
-  maxClusterRadius: 3,  // encore plus serré
+  maxClusterRadius: 2,  // encore plus serré
   spiderfyOnMaxZoom: true,
   showCoverageOnHover: false,
 };
@@ -127,7 +127,7 @@ function capitalize(s) {
 function getSizeByZoom(zoom) {
   const minZoom = 5;
   const maxZoom = 18;
-  const minSize = 6;
+  const minSize = 2;
   const maxSize = 18;
   if (zoom <= minZoom) return minSize;
   if (zoom >= maxZoom) return maxSize;
