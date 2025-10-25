@@ -10,5 +10,4 @@ body { margin: 0; font-family: Arial, sans-serif;}
 .custom-marker.orange { background:#ff9800;}
 .custom-marker.red { background:#f44336;}
 .custom-marker.gray { background:#bbb;}
-/* Sidebar custom layout */
 .leaflet-sidebar-pane label { display:block; margin:0.6em 0 0.2em 0;}
