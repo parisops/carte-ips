@@ -1,0 +1,4 @@
+# Node / outils locaux
+node_modules/
+npm-debug.log*
+*.DS_Store
