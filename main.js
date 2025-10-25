@@ -7,8 +7,7 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 const sidebar = L.control.sidebar({ container: 'sidebar' }).addTo(map);
 sidebar.open('filters');
 
-// Clustering avec rayon max réduit pour regroupements plus fins
-let markers = L.markerClusterGroup({ maxClusterRadius: 30 });
+let markers = L.markerClusterGroup();
 map.addLayer(markers);
 
 function iconColor(ips) {
@@ -18,6 +17,7 @@ function iconColor(ips) {
   if (v >= 100) return "orange";
   return "red";
 }
+
 function iconByIps(ips) {
   return L.divIcon({
     className: 'custom-marker ' + iconColor(ips),
@@ -32,11 +32,9 @@ Promise.all([
   fetch('data/localisations.json').then(r => r.json()),
   fetch('data/effectifs.json').then(r => r.json())
 ]).then(([ipsData, localisations, effectifs]) => {
-  // Mapper localisations et effectifs par UAI pour accès rapide
   const locMap = new Map(localisations.map(e => [e.numero_uai, e]));
   const effMap = new Map(effectifs.map(e => [e.numero_ecole || e.numero_uai, e]));
 
-  // Ne garder que les écoles présentes dans ips.json
   ecoles = ipsData.map(ip => {
     const uai = ip.uai || ip.numero_uai;
     const loc = locMap.get(uai) || {};
@@ -59,23 +57,27 @@ function afficherEcoles(objets) {
   markers.clearLayers();
   objets.forEach(ecole => {
     if (ecole.latitude && ecole.longitude) {
+      let popup = `<b>${ecole.appellation_officielle || ecole.denomination_principale}</b><br>` +
+                  `UAI: ${ecole.numero_uai}<br>` +
+                  `IPS: ${ecole.ips !== null ? ecole.ips : "NC"}<br>` +
+                  `Élèves: ${ecole.nombre_total_eleves || "NC"}`;
       let marker = L.marker([ecole.latitude, ecole.longitude], {
         icon: iconByIps(ecole.ips)
-      }).bindPopup(
-        `<b>${ecole.appellation_officielle || ecole.denomination_principale}</b><br>UAI: ${ecole.numero_uai}<br>IPS: ${ecole.ips !== null ? ecole.ips : "NC"}<br>Élèves: ${ecole.nombre_total_eleves || "NC"}`
-      );
+      }).bindPopup(popup);
       markers.addLayer(marker);
     }
   });
 }
 
-document.getElementById('filtrer').onclick = function () {
-  let checkedTypes = Array.from(document.querySelectorAll('.type-ecole:checked')).map(cb => cb.value);
+document.getElementById('filtrer').onclick = function() {
+  let type = document.getElementById('type-select').value;
   let minIps = Number(document.getElementById('ips-min').value);
   let maxIps = Number(document.getElementById('ips-max').value);
-  let filtres = ecoles.filter(e =>
-    (checkedTypes.length === 0 || checkedTypes.includes(e.denomination_principale)) &&
+  
+  let filtres = ecoles.filter(e => 
+    (!type || e.denomination_principale === type) &&
     (e.ips === null || (e.ips >= minIps && e.ips <= maxIps))
   );
+  
   afficherEcoles(filtres);
-};
+}
