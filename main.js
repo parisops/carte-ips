@@ -1,4 +1,4 @@
-console.log("Début de main.js");
+console.log("Début du main.js");
 
 const map = L.map('map').setView([48.85, 2.35], 10);
 
@@ -79,13 +79,12 @@ Promise.all([
 
       ipsEcoles.forEach((e) => {
         let uai = (e.uai || e.numero_uai || '').toUpperCase();
-        if (!e.ips_etab) {
-          console.warn('Pas d\'IPS pour école:', uai);
-          return;
-        }
-        let ipsValue = parseFloat(e.ips_etab);
-        if (isNaN(ipsValue)) {
-          console.warn('IPS invalide pour école:', uai);
+        let ipsValue =
+          e.ips_etab !== undefined && e.ips_etab !== null && e.ips_etab !== ''
+            ? parseFloat(e.ips_etab)
+            : null;
+        if (ipsValue === null || isNaN(ipsValue)) {
+          console.warn('Pas d’IPS ou IPS invalide pour école:', uai);
           return;
         }
         let loc = locMap.get(uai);
@@ -115,13 +114,12 @@ Promise.all([
 
       ipsColleges.forEach((c) => {
         let uai = (c.uai || c.numero_uai || '').toUpperCase();
-        if (!c.ips_etab) {
-          console.warn('Pas d\'IPS pour collège:', uai);
-          return;
-        }
-        let ipsValue = parseFloat(c.ips_etab);
-        if (isNaN(ipsValue)) {
-          console.warn('IPS invalide pour collège:', uai);
+        let ipsValue =
+          c.ips_etab !== undefined && c.ips_etab !== null && c.ips_etab !== ''
+            ? parseFloat(c.ips_etab)
+            : null;
+        if (ipsValue === null || isNaN(ipsValue)) {
+          console.warn('Pas d’IPS ou IPS invalide pour collège:', uai);
           return;
         }
         let loc = locMap.get(uai);
@@ -148,13 +146,12 @@ Promise.all([
 
       ipsLycees.forEach((l) => {
         let uai = (l.uai || l.numero_uai || '').toUpperCase();
-        if (!l.ips_etab) {
-          console.warn('Pas d\'IPS pour lycée:', uai);
-          return;
-        }
-        let ipsValue = parseFloat(l.ips_etab);
-        if (isNaN(ipsValue)) {
-          console.warn('IPS invalide pour lycée:', uai);
+        let ipsValue =
+          l.ips_etab !== undefined && l.ips_etab !== null && l.ips_etab !== ''
+            ? parseFloat(l.ips_etab)
+            : null;
+        if (ipsValue === null || isNaN(ipsValue)) {
+          console.warn('Pas d’IPS ou IPS invalide pour lycée:', uai);
           return;
         }
         let loc = locMap.get(uai);
