@@ -61,8 +61,8 @@ Promise.all([
   fetch('data/localisations.json').then(r => r.json()),
   fetch('data/effectifs.json').then(r => r.json()),
   fetch('data/ips-ecoles.json').then(r => r.json()),
-  fetch('data/ips-colleges.csv').then(r => r.text()),
-  fetch('data/ips-lycees.csv').then(r => r.text())
+  fetch('data/ips-colleges.json').then(r => r.text()),
+  fetch('data/ips-lycees.json').then(r => r.text())
 ]).then(([localisations, effectifs, ipsEcoles, ipsCollegesCSV, ipsLyceesCSV]) => {
   let ipsColleges = csvToObjArray(ipsCollegesCSV);
   let ipsLycees = csvToObjArray(ipsLyceesCSV);
