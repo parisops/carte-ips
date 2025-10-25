@@ -8,11 +8,15 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 const sidebar = L.control.sidebar({ container: 'sidebar' }).addTo(map);
 sidebar.open('filters');
 
-const markers = L.markerClusterGroup({ maxClusterRadius: 10 });
+const markers = L.markerClusterGroup({
+  maxClusterRadius: 15,
+  spiderfyOnMaxZoom: true,
+  showCoverageOnHover: false
+});
 map.addLayer(markers);
 
 function getColorByIps(ips) {
-  if (ips === undefined || ips === null || isNaN(ips)) return 'gray';
+  if (!ips || isNaN(ips)) return 'gray';
   const v = Number(ips);
   if (v < 90) return 'red';
   if (v < 105) return 'orange';
@@ -22,8 +26,7 @@ function getColorByIps(ips) {
 }
 
 function getShapeByType(type) {
-  if (!type) return 'circle';
-  switch (type.toLowerCase()) {
+  switch ((type || '').toLowerCase()) {
     case 'école':
     case 'ecole':
       return 'circle';
@@ -39,145 +42,89 @@ function getShapeByType(type) {
 }
 
 function createIcon(type, ips) {
-  const color = getColorByIps(ips);
-  const shape = getShapeByType(type);
   return L.divIcon({
-    className: `custom-marker ${shape} ${color}`,
-    iconSize: [18, 18],
+    className: `custom-marker ${getShapeByType(type)} ${getColorByIps(ips)}`,
+    iconSize: [16, 16],
   });
 }
 
-let ecoles = [];
+let etablissements = [];
 
 Promise.all([
-  fetch('data/ips-ecoles.json').then((r) => r.json()),
-  fetch('data/ips-colleges.json').then((r) => r.json()),
-  fetch('data/ips-lycees.json').then((r) => r.json()),
-  fetch('data/localisations.json').then((r) => r.json()),
-  fetch('data/effectifs.json').then((r) => r.json()),
-]).then(
-  ([ipsEcoles, ipsColleges, ipsLycees, localisations, effectifs]) => {
-    const locMap = new Map(localisations.map((l) => [l.numero_uai.toUpperCase(), l]));
-    const effMap = new Map(effectifs.map((e) => [e.numero_ecole.toUpperCase(), e]));
+  fetch('data/ips-ecoles.json').then(r => r.json()),
+  fetch('data/ips-colleges.json').then(r => r.json()),
+  fetch('data/ips-lycees.json').then(r => r.json()),
+  fetch('data/localisations.json').then(r => r.json()),
+  fetch('data/effectifs.json').then(r => r.json())
+])
+.then(([ipsEcoles, ipsColleges, ipsLycees, localisations, effectifs]) => {
+  const locMap = new Map(localisations.map(l => [l.numero_uai.trim().toUpperCase(), l]));
+  const effMap = new Map(effectifs.map(e => [(e.numero_ecole || e.numero_uai).trim().toUpperCase(), e]));
 
-    ecoles = [];
+  const mergeData = (data, type) => {
+    return data.flatMap(item => {
+      const uai = (item.uai || item.numero_uai || '').trim().toUpperCase();
+      const loc = locMap.get(uai);
+      if (!loc || !loc.latitude || !loc.longitude) return [];
+      const ips = parseFloat(item.ips_etab);
+      if (isNaN(ips)) return [];
 
-    // Ecoles
-    ipsEcoles.forEach((e) => {
-      let uai = (e.uai || e.numero_uai || '').toUpperCase();
-      let ipsValue = e.ips_etab !== undefined && e.ips_etab !== null && e.ips_etab !== '' ? parseFloat(e.ips_etab) : null;
-      if (ipsValue === null || isNaN(ipsValue)) return;
-      let loc = locMap.get(uai);
-      if (!loc) return;
-      let eff = effMap.get(uai);
-      ecoles.push({
+      const eff = effMap.get(uai) || {};
+      return [{
         numero_uai: uai,
-        type: 'école',
-        ips: ipsValue,
+        type,
+        ips,
         latitude: loc.latitude,
         longitude: loc.longitude,
-        denom: loc.denomination_principale || e.denomination_principale || '',
-        nombre_total_eleves: eff ? eff.nombre_total_eleves : null,
-        nombre_total_classes: eff ? eff.nombre_total_classes : null,
+        denom: loc.denomination_principale || item.denomination_principale || '',
         appellation: loc.appellation_officielle || '',
-        secteur: loc.secteur_public_prive_libe || 'public',
+        secteur: loc.secteur_public_prive_libe || 'Public',
         commune: loc.libelle_commune || '',
         departement: loc.libelle_departement || '',
-        ips_national: e.ips_national || null,
-        ips_academique: e.ips_academique || null,
-        ips_departemental: e.ips_departemental || null,
-      });
+        nombre_total_eleves: eff.nombre_total_eleves || null,
+        nombre_total_classes: eff.nombre_total_classes || null,
+        ips_national: item.ips_national || null,
+        ips_academique: item.ips_academique || null,
+        ips_departemental: item.ips_departemental || null
+      }];
     });
+  };
 
-    // Colleges
-    ipsColleges.forEach((c) => {
-      let uai = (c.uai || c.numero_uai || '').toUpperCase();
-      let ipsValue = c.ips_etab !== undefined && c.ips_etab !== null && c.ips_etab !== '' ? parseFloat(c.ips_etab) : null;
-      if (ipsValue === null || isNaN(ipsValue)) return;
-      let loc = locMap.get(uai);
-      if (!loc) return;
-      ecoles.push({
-        numero_uai: uai,
-        type: 'collège',
-        ips: ipsValue,
-        latitude: loc.latitude,
-        longitude: loc.longitude,
-        denom: c.denomination_principale || '',
-        appellation: loc.appellation_officielle || '',
-        secteur: loc.secteur_public_prive_libe || 'public',
-        commune: loc.libelle_commune || '',
-        departement: loc.libelle_departement || '',
-        ips_national: c.ips_national || null,
-        ips_academique: c.ips_academique || null,
-        ips_departemental: c.ips_departemental || null,
-      });
-    });
+  etablissements = [
+    ...mergeData(ipsEcoles, 'école'),
+    ...mergeData(ipsColleges, 'collège'),
+    ...mergeData(ipsLycees, 'lycée')
+  ];
 
-    // Lycées
-    ipsLycees.forEach((l) => {
-      let uai = (l.uai || l.numero_uai || '').toUpperCase();
-      let ipsValue = l.ips_etab !== undefined && l.ips_etab !== null && l.ips_etab !== '' ? parseFloat(l.ips_etab) : null;
-      if (ipsValue === null || isNaN(ipsValue)) return;
-      let loc = locMap.get(uai);
-      if (!loc) return;
-      ecoles.push({
-        numero_uai: uai,
-        type: 'lycée',
-        ips: ipsValue,
-        latitude: loc.latitude,
-        longitude: loc.longitude,
-        denom: l.denomination_principale || '',
-        appellation: loc.appellation_officielle || '',
-        secteur: loc.secteur_public_prive_libe || 'public',
-        commune: loc.libelle_commune || '',
-        departement: loc.libelle_departement || '',
-        ips_national: l.ips_national || null,
-        ips_academique: l.ips_academique || null,
-        ips_departemental: l.ips_departemental || null,
-      });
-    });
+  afficherPoints(etablissements);
+});
 
-    afficherEcoles(ecoles);
-  }
-);
-
-function formatPopupContent(e) {
-  const bgColor = getColorByIps(e.ips) + '20';
-  const borderColor = getColorByIps(e.ips) + '50';
-
-  return `
-    <div class="popup-title">${e.appellation || e.denom}</div>
-    <div class="popup-info">${e.type.charAt(0).toUpperCase() + e.type.slice(1)} • ${e.secteur}</div>
-    <div class="popup-info">${e.commune}, ${e.departement}</div>
-    <div class="popup-divider"></div>
-    <div class="popup-main-ips" style="background-color: ${bgColor}; border: 1px solid ${borderColor};">
-      IPS : ${e.ips !== null ? e.ips : 'NC'}
-    </div>
-    <div class="popup-compact-row"><span class="popup-compact-label">IPS National :</span><span class="popup-compact-value">${e.ips_national || 'NC'}</span></div>
-    <div class="popup-compact-row"><span class="popup-compact-label">IPS Académique :</span><span class="popup-compact-value">${e.ips_academique || 'NC'}</span></div>
-    <div class="popup-compact-row"><span class="popup-compact-label">IPS Départemental :</span><span class="popup-compact-value">${e.ips_departemental || 'NC'}</span></div>
-    <div class="popup-divider"></div>
-    <div class="popup-compact-row"><span class="popup-compact-label">Élèves :</span><span class="popup-compact-value">${e.nombre_total_eleves !== null ? e.nombre_total_eleves : 'NC'}</span></div>
-    <div class="popup-compact-row"><span class="popup-compact-label">Classes :</span><span class="popup-compact-value">${e.nombre_total_classes !== null ? e.nombre_total_classes : 'NC'}</span></div>
-  `;
-}
-
-function afficherEcoles(data) {
+function afficherPoints(data) {
   markers.clearLayers();
-  data.forEach((e) => {
-    if (!(e.latitude && e.longitude)) return;
-    let marker = L.marker([e.latitude, e.longitude], {
-      icon: createIcon(e.type, e.ips),
-    }).bindPopup(formatPopupContent(e));
+  data.forEach(e => {
+    const marker = L.marker([e.latitude, e.longitude], {
+      icon: createIcon(e.type, e.ips)
+    }).bindPopup(`
+      <div class="popup-title">${e.appellation || e.denom}</div>
+      <div class="popup-info">${e.type.charAt(0).toUpperCase() + e.type.slice(1)} • ${e.secteur}</div>
+      <div class="popup-info">${e.commune}, ${e.departement}</div>
+      <div class="popup-divider"></div>
+      <div class="popup-main-ips" style="background-color:${getColorByIps(e.ips)}20; border:1px solid ${getColorByIps(e.ips)}75">
+        IPS : ${e.ips.toFixed(1)}
+      </div>
+      <div class="popup-compact-row"><span class="popup-compact-label">Élèves :</span><span class="popup-compact-value">${e.nombre_total_eleves || 'NC'}</span></div>
+      <div class="popup-compact-row"><span class="popup-compact-label">Classes :</span><span class="popup-compact-value">${e.nombre_total_classes || 'NC'}</span></div>
+    `);
     markers.addLayer(marker);
   });
 }
 
 document.getElementById('filtrer').onclick = () => {
-  const selectedTypes = Array.from(document.querySelectorAll('.type-filter:checked')).map((cb) => cb.value);
+  const types = [...document.querySelectorAll('.type-filter:checked')].map(cb => cb.value);
   const minIps = parseFloat(document.getElementById('ips-min').value) || 0;
   const maxIps = parseFloat(document.getElementById('ips-max').value) || 200;
-
-  const filtered = ecoles.filter((e) => selectedTypes.includes(e.type) && e.ips >= minIps && e.ips <= maxIps);
-  afficherEcoles(filtered);
+  const filtres = etablissements.filter(e =>
+    types.includes(e.type) && e.ips >= minIps && e.ips <= maxIps
+  );
+  afficherPoints(filtres);
 };
