@@ -86,4 +86,117 @@ Promise.all([
         latitude: loc.latitude,
         longitude: loc.longitude,
         denom: loc.denomination_principale || e.denomination_principale || '',
-        nombre
+        nombre_total_eleves: eff ? eff.nombre_total_eleves : null,
+        nombre_total_classes: eff ? eff.nombre_total_classes : null,
+        appellation: loc.appellation_officielle || '',
+        secteur: loc.secteur_public_prive_libe || 'public',
+        commune: loc.libelle_commune || '',
+        departement: loc.libelle_departement || '',
+        ips_national: e.ips_national || null,
+        ips_academique: e.ips_academique || null,
+        ips_departemental: e.ips_departemental || null
+      });
+    });
+
+    ipsColleges.forEach(c => {
+      let uai = (c.uai || c.numero_uai || '').toUpperCase();
+      if (!c.ips_etab) return;
+      let ipsValue = parseFloat(c.ips_etab);
+      if (isNaN(ipsValue)) return;
+      let loc = locMap.get(uai);
+      if (!loc) {
+        console.warn("Localisation manquante pour collège UAI:", uai);
+        return;
+      }
+      ecoles.push({
+        numero_uai: uai,
+        type: 'collège',
+        ips: ipsValue,
+        latitude: loc.latitude,
+        longitude: loc.longitude,
+        denom: c.denomination_principale || '',
+        appellation: loc.appellation_officielle || '',
+        secteur: loc.secteur_public_prive_libe || 'public',
+        commune: loc.libelle_commune || '',
+        departement: loc.libelle_departement || '',
+        ips_national: c.ips_national || null,
+        ips_academique: c.ips_academique || null,
+        ips_departemental: c.ips_departemental || null
+      });
+    });
+
+    ipsLycees.forEach(l => {
+      let uai = (l.uai || l.numero_uai || '').toUpperCase();
+      if (!l.ips_etab) return;
+      let ipsValue = parseFloat(l.ips_etab);
+      if (isNaN(ipsValue)) return;
+      let loc = locMap.get(uai);
+      if (!loc) {
+        console.warn("Localisation manquante pour lycée UAI:", uai);
+        return;
+      }
+      ecoles.push({
+        numero_uai: uai,
+        type: 'lycée',
+        ips: ipsValue,
+        latitude: loc.latitude,
+        longitude: loc.longitude,
+        denom: l.denomination_principale || '',
+        appellation: loc.appellation_officielle || '',
+        secteur: loc.secteur_public_prive_libe || 'public',
+        commune: loc.libelle_commune || '',
+        departement: loc.libelle_departement || '',
+        ips_national: l.ips_national || null,
+        ips_academique: l.ips_academique || null,
+        ips_departemental: l.ips_departemental || null
+      });
+    });
+
+    console.log("Total établissements après fusion:", ecoles.length);
+    afficherEcoles(ecoles);
+  }
+);
+
+function formatPopupContent(e) {
+  const bgColor = getColorByIps(e.ips) + "20";
+  const borderColor = getColorByIps(e.ips) + "50";
+
+  return `
+    <div class="popup-title">${e.appellation || e.denom}</div>
+    <div class="popup-info">${e.type.charAt(0).toUpperCase() + e.type.slice(1)} • ${e.secteur}</div>
+    <div class="popup-info">${e.commune}, ${e.departement}</div>
+    <div class="popup-divider"></div>
+    <div class="popup-main-ips" style="background-color: ${bgColor}; border: 1px solid ${borderColor};">
+      IPS: ${e.ips !== null ? e.ips : 'NC'}
+    </div>
+    <div class="popup-compact-row"><span class="popup-compact-label">IPS National:</span><span class="popup-compact-value">${e.ips_national || 'NC'}</span></div>
+    <div class="popup-compact-row"><span class="popup-compact-label">IPS Académique:</span><span class="popup-compact-value">${e.ips_academique || 'NC'}</span></div>
+    <div class="popup-compact-row"><span class="popup-compact-label">IPS Départemental:</span><span class="popup-compact-value">${e.ips_departemental || 'NC'}</span></div>
+    <div class="popup-divider"></div>
+    <div class="popup-compact-row"><span class="popup-compact-label">Élèves:</span><span class="popup-compact-value">${e.nombre_total_eleves !== null ? e.nombre_total_eleves : 'NC'}</span></div>
+    <div class="popup-compact-row"><span class="popup-compact-label">Classes:</span><span class="popup-compact-value">${e.nombre_total_classes !== null ? e.nombre_total_classes : 'NC'}</span></div>
+  `;
+}
+
+function afficherEcoles(data) {
+  markers.clearLayers();
+  data.forEach(e => {
+    if (!(e.latitude && e.longitude)) return;
+    let marker = L.marker([e.latitude, e.longitude], {
+      icon: createIcon(e.type, e.ips)
+    }).bindPopup(formatPopupContent(e));
+    markers.addLayer(marker);
+  });
+}
+
+document.getElementById('filtrer').onclick = () => {
+  const selectedTypes = Array.from(document.querySelectorAll('.type-filter:checked')).map(cb => cb.value);
+  const minIps = parseFloat(document.getElementById('ips-min').value) || 0;
+  const maxIps = parseFloat(document.getElementById('ips-max').value) || 200;
+
+  const filtered = ecoles.filter(e =>
+    selectedTypes.includes(e.type) &&
+    e.ips >= minIps &&
+    e.ips <= maxIps);
+  afficherEcoles(filtered);
+};
