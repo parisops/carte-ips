@@ -2,14 +2,13 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
-  <title>Carte Établissements améliorée</title>
+  <title>Carte Etablissements avancée</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet-sidebar-v2/css/leaflet-sidebar.css" />
-
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -25,33 +24,31 @@
       <h2 class="leaflet-sidebar-header">Filtres</h2>
       <div class="filter-group">
         <p><strong>Type d’établissement</strong></p>
-        <label><input type="checkbox" class="type-filter" value="école" checked /> École (cercle)</label><br/>
-        <label><input type="checkbox" class="type-filter" value="collège" checked /> Collège (carré)</label><br/>
-        <label><input type="checkbox" class="type-filter" value="lycée" checked /> Lycée (losange)</label>
+        <label><input type="checkbox" class="type-filter" value="école" checked/> École (cercle)</label><br/>
+        <label><input type="checkbox" class="type-filter" value="collège" checked/> Collège (carré)</label><br/>
+        <label><input type="checkbox" class="type-filter" value="lycée" checked/> Lycée (losange)</label>
       </div>
       <div class="filter-group">
         <p><strong>IPS (indice de position sociale)</strong></p>
-        <label>Min : <input id="ips-min" type="number" value="0" min="0" max="200" step="0.1" /></label><br/>
-        <label>Max : <input id="ips-max" type="number" value="200" min="0" max="200" step="0.1" /></label>
+        <label>Min : <input id="ips-min" type="number" value="0" min="0" max="200" step="0.1"/></label><br/>
+        <label>Max : <input id="ips-max" type="number" value="200" min="0" max="200" step="0.1"/></label>
       </div>
-      <button id="filtrer">Appliquer Filtres</button>
-
+      <button id="filtrer">Appliquer les filtres</button>
       <hr/>
-
       <h2 class="leaflet-sidebar-header">Légende</h2>
       <div class="legend-section">
-        <strong>Formes :</strong><br />
-        <svg height="20" width="20">ircle cx="10" cy="10" r="8" style="stroke:#fff; stroke-width:2; fillll:#444;"></circle></svg> École (cercle)<br />
-        <svg height="20" width="20"><rect width="16" height="16" x="2" y="2" style="stroke:#fff; stroke-width:2; fill:#444;"></rect></svg> Collège (carré)<br />
-        <svg height="20" width="20"><polygon points="10,2 18,10 10,18 2,10" style="stroke:#fff; stroke-width:2; fill:#444;"></polygon></svg> Lycée (losange)<br />
+        <strong>Formes :</strong><br/>
+        <svg height="20" width="20"><rcle cx="10" cy="10" r="8" style="stroke:#fff; stroke-width:2; fillll:#444;"></circle></svg> École (cercle)<br/>
+        <svg height="20" width="20"><rect width="16" height="16" x="2" y="2" style="stroke:#fff; stroke-width:2; fill:#444;"></rect></svg> Collège (carré)<br/>
+        <svg height="20" width="20"><polygon points="10,2 18,10 10,18 2,10" style="stroke:#fff; stroke-width:2; fill:#444;"></polygon></svg> Lycée (losange)<br/>
       </div>
       <div class="legend-section" style="margin-top:10px;">
-        <strong>Couleurs IPS :</strong><br />
-        <span class="legend-color red"></span> &lt; 90 (très défavorisé)<br />
-        <span class="legend-color orange"></span> 90 ≤ IPS &lt; 105 (défavorisé)<br />
-        <span class="legend-color yellow"></span> 105 ≤ IPS &lt; 120 (moyen)<br />
-        <span class="legend-color lightgreen"></span> 120 ≤ IPS &lt; 130 (favorisé)<br />
-        <span class="legend-color darkgreen"></span> ≥ 130 (très favorisé)<br />
+        <strong>Couleurs IPS :</strong><br/>
+        <span class="legend-color red"></span> &lt; 90 (très défavorisé)<br/>
+        <span class="legend-color orange"></span> 90 ≤ IPS &lt; 105 (défavorisé)<br/>
+        <span class="legend-color yellow"></span> 105 ≤ IPS &lt; 120 (moyen)<br/>
+        <span class="legend-color lightgreen"></span> 120 ≤ IPS &lt; 130 (favorisé)<br/>
+        <span class="legend-color darkgreen"></span> ≥ 130 (très favorisé)<br/>
       </div>
     </div>
   </div>
