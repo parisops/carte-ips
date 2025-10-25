@@ -7,10 +7,10 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 const sidebar = L.control.sidebar({ container: 'sidebar' }).addTo(map);
 sidebar.open('filters');
 
-let markers = L.markerClusterGroup();
+// Clustering: groupe plus "fin"
+let markers = L.markerClusterGroup({ maxClusterRadius: 30 });
 map.addLayer(markers);
 
-// Couleurs IPS
 function iconColor(ips) {
   if (ips === undefined || ips === null || isNaN(ips)) return "gray";
   let v = Number(ips);
@@ -45,9 +45,9 @@ Promise.all([
   afficherEcoles(ecoles);
 });
 
-function afficherEcoles(liste) {
+function afficherEcoles(objets) {
   markers.clearLayers();
-  liste.forEach(ecole => {
+  objets.forEach(ecole => {
     if (ecole.latitude && ecole.longitude) {
       let marker = L.marker([ecole.latitude, ecole.longitude], {
         icon: iconByIps(ecole.ips)
@@ -60,11 +60,11 @@ function afficherEcoles(liste) {
 }
 
 document.getElementById('filtrer').onclick = function () {
-  let type = document.getElementById('type-select').value;
+  let checkedTypes = Array.from(document.querySelectorAll('.type-ecole:checked')).map(cb => cb.value);
   let minIps = Number(document.getElementById('ips-min').value);
   let maxIps = Number(document.getElementById('ips-max').value);
   let filtres = ecoles.filter(e =>
-    (!type || e.denomination_principale === type) &&
+    (checkedTypes.length === 0 || checkedTypes.includes(e.denomination_principale)) &&
     (e.ips === null || (e.ips >= minIps && e.ips <= maxIps))
   );
   afficherEcoles(filtres);
