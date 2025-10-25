@@ -25,8 +25,8 @@ body {
   display: inline-block;
   width: 16px;
   height: 16px;
-  vertical-align: middle;
   margin-right: 6px;
+  vertical-align: middle;
   border: 1px solid #444;
 }
 
@@ -55,7 +55,6 @@ body {
   display: inline-block;
 }
 
-/* Styles popup compact */
 .popup-title {
   font-weight: bold;
   font-size: 1.1em;
