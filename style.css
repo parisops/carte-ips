@@ -22,7 +22,7 @@ body {
 }
 
 .legend-color {
-  display:inline-block;
+  display: inline-block;
   width: 16px;
   height: 16px;
   vertical-align: middle;
@@ -37,10 +37,10 @@ body {
 .darkgreen { background-color: #388e3c; }
 
 .custom-marker {
-  border: 1px solid white;
+  border: 2px solid white;
   box-sizing: border-box;
-  width: 12px; /* Réduction de la taille */
-  height: 12px;
+  width: 18px;
+  height: 18px;
 }
 
 .custom-marker.circle {
@@ -48,11 +48,50 @@ body {
 }
 
 .custom-marker.square {
-  /* carré */
 }
 
 .custom-marker.diamond {
   transform: rotate(45deg);
   margin-bottom: 6px;
   display: inline-block;
+}
+
+/* Popup compact styles */
+.popup-title {
+  font-weight: bold;
+  font-size: 1.1em;
+  margin-bottom: 4px;
+}
+
+.popup-info {
+  font-size: 0.9em;
+  margin-bottom: 2px;
+}
+
+.popup-divider {
+  height: 1px;
+  background-color: #888;
+  margin: 5px 0;
+}
+
+.popup-main-ips {
+  font-weight: bold;
+  padding: 4px;
+  border-radius: 3px;
+  margin-bottom: 6px;
+}
+
+.popup-compact-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8em;
+  margin: 2px 0;
+}
+
+.popup-compact-label {
+  font-weight: 600;
+}
+
+.popup-compact-value {
+  font-weight: 400;
 }
