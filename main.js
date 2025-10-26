@@ -28,7 +28,6 @@ const ESTABLISHMENT_TYPES = {
     'LYCEE D ENSEIGNEMENT GENERAL'
   ]
 };
-
 const IPS_COLORS = {
   getColor: (ips) => {
     if (ips < 90) return '#d32f2f';
@@ -48,18 +47,12 @@ async function init() {
 }
 
 function initMap() {
-  map = L.map('map').setView([48.7, 2.5], 9); // Zoom initial centré sur Île-de-France
+  map = L.map('map').setView([48.7, 2.5], 9);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap contributors',
     maxZoom: 18,
   }).addTo(map);
-  markersCluster = L.markerClusterGroup({
-    maxClusterRadius: 10,
-    chunkedLoading: true,
-    disableClusteringAtZoom: 14,
-    spiderfyOnMaxZoom: true,
-    showCoverageOnHover: false,
-  });
+  markersCluster = L.markerClusterGroup({ maxClusterRadius: 10, chunkedLoading: true, disableClusteringAtZoom: 14, spiderfyOnMaxZoom: true, showCoverageOnHover: false });
   map.addLayer(markersCluster);
 }
 
@@ -71,10 +64,8 @@ async function loadData() {
     fetch('data/localisations.json').then(r => r.json()),
     fetch('data/effectifs.json').then(r => r.json()),
   ]);
-
   const locMap = new Map(localisations.map(l => [l.numero_uai.trim().toUpperCase(), l]));
   const effMap = new Map(effectifs.map(e => [((e.numero_ecole || e.numero_uai) || '').trim().toUpperCase(), e]));
-
   allSchools = [
     ...processIPSData(ipsEcoles, 'école', 'ips', locMap, effMap),
     ...processIPSData(ipsColleges, 'collège', 'ips', locMap, effMap),
@@ -95,6 +86,8 @@ function processIPSData(data, type, ipsField, locMap, effMap) {
     return [{
       uai,
       type,
+      region: loc.code_region ? loc.libelle_region : "",
+      departement: loc.libelle_departement || "",
       ips: ipsVal,
       latitude: loc.latitude,
       longitude: loc.longitude,
@@ -102,90 +95,142 @@ function processIPSData(data, type, ipsField, locMap, effMap) {
       appellation: loc.appellation_officielle || '',
       patronyme: loc.patronyme_uai || loc.denomination_principale || '',
       sector: loc.secteur_public_prive_libe || 'Public',
-      commune: loc.libelle_commune || '',
-      departement: loc.libelle_departement || '',
+      commune: loc.libelle_commune || "",
       nombre_total_eleves: eff.nombre_total_eleves || null,
       nombre_total_classes: eff.nombre_total_classes || null,
-      ipsdepartemental: e.ips_departemental || null
+      ipsdepartemental: e.ips_departemental || null,
+      type_long: type
     }];
   });
 }
 
+function setupEventListeners() {
+  // Types
+  ['ecoles', 'colleges', 'lyceesLEGT', 'lyceesLPO', 'lyceesLP', 'lyceesAutres'].forEach(type => {
+    document.getElementById(type+'Check').addEventListener('change', e => {
+      currentFilters.types[type] = e.target.checked;
+      applyFilters();
+    });
+  });
+  // Secteur public/privé
+  document.getElementById('publicCheck').addEventListener('change', e => { currentFilters.sectors.public = e.target.checked; applyFilters(); });
+  document.getElementById('privateCheck').addEventListener('change', e => { currentFilters.sectors.private = e.target.checked; applyFilters(); });
+  // Regions et départements
+  document.getElementById('regionFilter').addEventListener('change', e => { currentFilters.region = e.target.value; updateDepartmentFilter(); applyFilters(); });
+  document.getElementById('departmentFilter').addEventListener('change', e => { currentFilters.department = e.target.value; applyFilters(); });
+  // IPS
+  document.getElementById('ipsMin').addEventListener('input', e => { currentFilters.ipsMin = parseInt(e.target.value); updateIpsRangeLabel(); applyFilters(); });
+  document.getElementById('ipsMax').addEventListener('input', e => { currentFilters.ipsMax = parseInt(e.target.value); updateIpsRangeLabel(); applyFilters(); });
+  document.getElementById('resetFilters').addEventListener('click', resetFilters);
+}
+function updateDepartmentFilter() {
+  const departmentSelect = document.getElementById('departmentFilter');
+  const selectedRegion = currentFilters.region;
+  departmentSelect.innerHTML = `<option value="">Tous les départements</option>`;
+  let departments = [];
+  if (selectedRegion) {
+    departments = [...new Set(allSchools.filter(s => s.region === selectedRegion).map(s => s.departement))];
+  } else {
+    departments = [...new Set(allSchools.map(s => s.departement))];
+  }
+  departments.filter(d => d).sort().forEach(dept => {
+    const option = document.createElement('option');
+    option.value = dept;
+    option.textContent = dept;
+    departmentSelect.appendChild(option);
+  });
+}
 function populateFilters() {
   const regions = [...new Set(allSchools.map(s => s.region))].filter(r => r).sort();
   const regionSelect = document.getElementById('regionFilter');
+  regionSelect.innerHTML = `<option value="">Toutes les régions</option>`;
   regions.forEach(region => {
     const option = document.createElement('option');
     option.value = region;
     option.textContent = region;
     regionSelect.appendChild(option);
   });
+  updateDepartmentFilter();
 }
-
+function updateIpsRangeLabel() {
+  document.getElementById('ipsRangeLabel').textContent = `${currentFilters.ipsMin} – ${currentFilters.ipsMax}`;
+}
+function resetFilters() {
+  currentFilters = {
+    region: '',
+    department: '',
+    sectors: { public: true, private: true },
+    types: { ecoles: true, colleges: true, lyceesLEGT: true, lyceesLPO: true, lyceesLP: true, lyceesAutres: true },
+    ipsMin: 45,
+    ipsMax: 185
+  };
+  ['ecoles', 'colleges', 'lyceesLEGT', 'lyceesLPO', 'lyceesLP', 'lyceesAutres'].forEach(type => 
+    document.getElementById(type+'Check').checked = true
+  );
+  document.getElementById('regionFilter').value = "";
+  updateDepartmentFilter();
+  document.getElementById('departmentFilter').value = "";
+  document.getElementById('publicCheck').checked = true;
+  document.getElementById('privateCheck').checked = true;
+  document.getElementById('ipsMin').value = 45;
+  document.getElementById('ipsMax').value = 185;
+  updateIpsRangeLabel();
+  map.setView([48.7, 2.5], 9);
+  applyFilters();
+}
 function applyFilters() {
   filteredSchools = allSchools.filter(school => {
-    const type = school.type ? school.type.toLowerCase() : '';
-    const sector = school.sector ? school.sector.toLowerCase() : '';
-    if (type.includes('école') && !currentFilters.types.ecoles) return false;
-    if (type.includes('collège') && !currentFilters.types.colleges) return false;
-    if (type.includes('lycée')) {
-      if (school.type.includes('LEGT') && !currentFilters.types.lyceesLEGT) return false;
-      if (school.type.includes('LPO') && !currentFilters.types.lyceesLPO) return false;
-      if (school.type.includes('LP') && !school.type.includes('LPO') && !currentFilters.types.lyceesLP) return false;
-      if (!school.type.includes('LEGT') && !school.type.includes('LPO') && !school.type.includes('LP') && !currentFilters.types.lyceesAutres) return false;
+    if (!school) return false;
+    const type = (school.type_long || "").toLowerCase();
+    if (type === 'école' && !currentFilters.types.ecoles) return false;
+    if (type === 'collège' && !currentFilters.types.colleges) return false;
+    if (type === 'lycée') {
+      // Cas des lycées spécialisés via la denomination
+      if (school.denomination && school.denomination.includes('ENSEIGNT GENERAL ET TECHNOLOGIQUE') && !currentFilters.types.lyceesLEGT) return false;
+      if (school.denomination && school.denomination.includes('POLYVALENT') && !currentFilters.types.lyceesLPO) return false;
+      if (school.denomination && school.denomination.includes('PROFESSIONNEL') && !currentFilters.types.lyceesLP) return false;
+      if (!(school.denomination && (school.denomination.includes('ENSEIGNT GENERAL ET TECHNOLOGIQUE') || school.denomination.includes('POLYVALENT') || school.denomination.includes('PROFESSIONNEL'))) && !currentFilters.types.lyceesAutres) return false;
     }
     if (currentFilters.region && school.region !== currentFilters.region) return false;
     if (currentFilters.department && school.departement !== currentFilters.department) return false;
+    const sector = (school.sector || "").toLowerCase();
     if (sector.includes('public') && !currentFilters.sectors.public) return false;
-    if (sector.includes('privé') && !currentFilters.sectors.private) return false;
+    if (sector.includes('priv') && !currentFilters.sectors.private) return false;
     if (school.ips < currentFilters.ipsMin || school.ips > currentFilters.ipsMax) return false;
     return true;
   });
   updateMarkers();
   updateStatistics();
 }
-
 function updateMarkers() {
   markersCluster.clearLayers();
   filteredSchools.forEach(school => {
     let marker;
     const color = IPS_COLORS.getColor(school.ips);
-    const type = school.type ? school.type.toLowerCase() : '';
-    if (type.includes('école')) {
+    const type = school.type_long;
+    if (type === 'école') {
       marker = L.circleMarker([school.latitude, school.longitude], {
         radius: 8,
         fillColor: color,
-        color: '#fff',
+        color: '#222',
         weight: 2,
         opacity: 1,
-        fillOpacity: 0.9,
+        fillOpacity: 0.95
       });
-    } else if (type.includes('collège')) {
-      const icon = L.divIcon({
-        className: 'custom-marker',
-        html: `<div class="marker-square" style="background-color:${color}"></div>`,
-        iconSize: [14, 14],
-        iconAnchor: [7, 7],
-        popupAnchor: [0, -7],
-      });
+    } else if (type === 'collège') {
+      const icon = L.divIcon({ className: 'custom-marker', html: `<div class="marker-square" style="background-color:${color}"></div>`, iconSize: [14, 14], iconAnchor: [7, 7], popupAnchor: [0, -7] });
       marker = L.marker([school.latitude, school.longitude], { icon });
-    } else if (type.includes('lycée')) {
-      const icon = L.divIcon({
-        className: 'custom-marker',
-        html: `<div class="marker-diamond" style="background-color:${color}"></div>`,
-        iconSize: [16, 16],
-        iconAnchor: [8, 8],
-        popupAnchor: [0, -8],
-      });
+    } else if (type === 'lycée') {
+      const icon = L.divIcon({ className: 'custom-marker', html: `<div class="marker-diamond" style="background-color:${color}"></div>`, iconSize: [16, 16], iconAnchor: [8, 8], popupAnchor: [0, -8] });
       marker = L.marker([school.latitude, school.longitude], { icon });
     } else {
       marker = L.circleMarker([school.latitude, school.longitude], {
         radius: 8,
         fillColor: color,
-        color: '#fff',
+        color: '#222',
         weight: 2,
         opacity: 1,
-        fillOpacity: 0.9,
+        fillOpacity: 0.95
       });
     }
     marker.bindPopup(createDetailedPopup(school));
@@ -197,43 +242,55 @@ function createDetailedPopup(school) {
   const color = IPS_COLORS.getColor(school.ips);
   const ipsDepartementalNum = parseFloat(school.ipsdepartemental);
   const ipsDepartementalText = !isNaN(ipsDepartementalNum) ? ipsDepartementalNum.toFixed(1) : "N/A";
-
   let html = `
-    <div class="popup-title">${escapeHtml(school.patronyme || school.denomination)}</div>
-    <div class="popup-info">${escapeHtml(school.type || '')} - ${escapeHtml(school.sector || '')}</div>
+    <div class="popup-title">${escapeHtml(school.patronyme || school.denomination || "")}</div>
+    <div class="popup-info">${escapeHtml(school.denomination || school.type_long || "")} - ${escapeHtml(school.sector || '')}</div>
     <div class="popup-info">${escapeHtml(school.commune || '')}, ${escapeHtml(school.departement || '')}</div>
     <div class="popup-divider"></div>
-    <div class="popup-main-ips" style="background-color: ${color}; border: 1px solid ${color}50;">
-      IPS: ${school.ips ? school.ips.toFixed(1) : 'N/A'}
+    <div class="popup-main-ips" style="background-color: ${color}; color:#111; border: 1px solid ${color}50;">
+      IPS: <span style="font-weight:bold;color:#222">${school.ips ? school.ips.toFixed(1) : 'N/A'}</span>
     </div>
-    <div class="popup-info">
-      IPS départemental: ${ipsDepartementalText}
+    <div class="popup-info" style="color:#222">
+      IPS départemental: <span style="font-weight: bold; color: #222">${ipsDepartementalText}</span>
     </div>
   `;
   if (school.nombre_total_eleves != null && school.nombre_total_classes != null) {
     html += `
       <div class="popup-compact-row">
-        <span>Élèves:</span> ${school.nombre_total_eleves}
-        <span>Classes:</span> ${school.nombre_total_classes}
+        <span>Élèves:</span> <strong>${school.nombre_total_eleves}</strong>
+        <span>Classes:</span> <strong>${school.nombre_total_classes}</strong>
       </div>
     `;
   }
   return html;
 }
-
 function escapeHtml(text) {
   if (!text) return '';
   const div = document.createElement('div');
   div.textContent = text;
   return div.innerHTML;
 }
-
-function setupEventListeners() {
-  // Ajoutez ici vos écouteurs d'événements ou filtres
-}
-
 function updateStatistics() {
-  // Implémentation de la mise à jour des statistiques si nécessaire
+  const total = filteredSchools.length;
+  document.getElementById('statTotal').textContent = total;
+  if (total === 0) {
+    document.getElementById('statAvg').textContent = "-";
+    document.getElementById('statMin').textContent = "-";
+    document.getElementById('statMax').textContent = "-";
+    document.getElementById('statPublic').textContent = 0;
+    document.getElementById('statPrivate').textContent = 0;
+    return;
+  }
+  const ipsValues = filteredSchools.map(s => s.ips);
+  const avg = ipsValues.reduce((a, b) => a + b, 0) / total;
+  const min = Math.min(...ipsValues);
+  const max = Math.max(...ipsValues);
+  const pubCount = filteredSchools.filter(s => (s.sector || "").toLowerCase().includes("public")).length;
+  const privCount = filteredSchools.filter(s => (s.sector || "").toLowerCase().includes("priv")).length;
+  document.getElementById('statAvg').textContent = avg.toFixed(1);
+  document.getElementById('statMin').textContent = min.toFixed(1);
+  document.getElementById('statMax').textContent = max.toFixed(1);
+  document.getElementById('statPublic').textContent = pubCount;
+  document.getElementById('statPrivate').textContent = privCount;
 }
-
-document.addEventListener('DOMContentLoaded', init);
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
