@@ -1,111 +1,106 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Carte Interactive - IPS des Écoles</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css" />
 </head>
 <body>
 <div class="app-container">
-<!-- Sidebar -->
-<aside class="sidebar">
-<div class="sidebar-content">
-<h1 class="title">Carte Interactive</h1>
-<p class="subtitle">[translate:Indice de Position Sociale des Établissements]</p>
+  <aside class="sidebar">
+    <div class="sidebar-content">
+      <h1 class="title">Carte Interactive</h1>
+      <p class="subtitle">Indice de Position Sociale des Établissements</p>
 
-<!-- Filters Section -->
-<div id="filters" class="filters">
-<h2 class="section-title">Filtres</h2>
-<div class="form-group">
-<label class="form-label">Type d'établissement</label>
-<div class="checkbox-group">
-<label class="checkbox-label"><input type="checkbox" id="ecolesCheck" checked><span>Écoles</span></label>
-<label class="checkbox-label"><input type="checkbox" id="collegesCheck" checked><span>Collèges</span></label>
-<label class="checkbox-label"><input type="checkbox" id="lyceesLEGTCheck" checked><span>Lycées LEGT</span></label>
-<label class="checkbox-label"><input type="checkbox" id="lyceesLPOCheck" checked><span>Lycées LPO</span></label>
-<label class="checkbox-label"><input type="checkbox" id="lyceesLPCheck" checked><span>Lycées LP</span></label>
-<label class="checkbox-label"><input type="checkbox" id="lyceesAutresCheck" checked><span>Autres lycées</span></label>
-</div>
-</div>
+      <div id="filters" class="filters">
+        <h2 class="section-title">Filtres</h2>
 
-<div class="form-group">
-<label class="form-label">Région</label>
-<select id="regionFilter" class="form-control">
-<option value="">Toutes les régions</option>
-</select>
-</div>
+        <div class="form-group">
+          <label class="form-label">Type d'établissement</label>
+          <div class="checkbox-group">
+            <label class="checkbox-label"><input id="ecolesCheck" type="checkbox" checked /> Écoles</label>
+            <label class="checkbox-label"><input id="collegesCheck" type="checkbox" checked /> Collèges</label>
+            <label class="checkbox-label"><input id="lyceesLEGTCheck" type="checkbox" checked /> Lycées LEGT</label>
+            <label class="checkbox-label"><input id="lyceesLPOCheck" type="checkbox" checked /> Lycées LPO</label>
+            <label class="checkbox-label"><input id="lyceesLPCheck" type="checkbox" checked /> Lycées LP</label>
+            <label class="checkbox-label"><input id="lyceesAutresCheck" type="checkbox" checked /> Autres lycées</label>
+          </div>
+        </div>
 
-<div class="form-group">
-<label class="form-label">Département</label>
-<select id="departmentFilter" class="form-control">
-<option value="">Tous les départements</option>
-</select>
-</div>
+        <div class="form-group">
+          <label class="form-label" for="regionFilter">Région</label>
+          <select id="regionFilter" class="form-control">
+            <option value="">Toutes les régions</option>
+          </select>
+        </div>
 
-<div class="form-group">
-<label class="form-label">Secteur</label>
-<div class="checkbox-group">
-<label class="checkbox-label"><input type="checkbox" id="publicCheck" checked><span>Public</span></label>
-<label class="checkbox-label"><input type="checkbox" id="privateCheck" checked><span>Privé sous contrat</span></label>
-</div>
-</div>
+        <div class="form-group">
+          <label class="form-label" for="departmentFilter">Département</label>
+          <select id="departmentFilter" class="form-control">
+            <option value="">Tous les départements</option>
+          </select>
+        </div>
 
-<div class="form-group">
-<label class="form-label">Plage IPS: <span id="ipsRangeLabel">45 - 185</span></label>
-<div class="range-inputs">
-<input type="number" id="ipsMin" class="form-control form-control-small" value="45" min="45" max="185">
-<span>-</span>
-<input type="number" id="ipsMax" class="form-control form-control-small" value="185" min="45" max="185">
-</div>
-</div>
+        <div class="form-group">
+          <label class="form-label">Secteur</label>
+          <div class="checkbox-group">
+            <label class="checkbox-label"><input id="publicCheck" type="checkbox" checked /> Public</label>
+            <label class="checkbox-label"><input id="privateCheck" type="checkbox" checked /> Privé sous contrat</label>
+          </div>
+        </div>
 
-<button id="resetFilters" class="btn btn--primary btn--full-width">Réinitialiser les filtres</button>
-</div>
+        <div class="form-group">
+          <label class="form-label">Plage IPS : <span id="ipsRangeLabel">45 - 185</span></label>
+          <div class="range-inputs">
+            <input id="ipsMin" type="number" class="form-control form-control-small" value="45" min="45" max="185" />
+            <span>-</span>
+            <input id="ipsMax" type="number" class="form-control form-control-small" value="185" min="45" max="185" />
+          </div>
+        </div>
 
-<!-- Statistics Section -->
-<div id="statistics" class="statistics">
-<h2 class="section-title">Statistiques</h2>
-<div class="stat-item"><span class="stat-label">Établissements affichés:</span><span class="stat-value" id="statTotal">0</span></div>
-<div class="stat-item"><span class="stat-label">IPS moyen:</span><span class="stat-value" id="statAvg">-</span></div>
-<div class="stat-item"><span class="stat-label">IPS min:</span><span class="stat-value" id="statMin">-</span></div>
-<div class="stat-item"><span class="stat-label">IPS max:</span><span class="stat-value" id="statMax">-</span></div>
-<div class="stat-item"><span class="stat-label">Public:</span><span class="stat-value" id="statPublic">0</span></div>
-<div class="stat-item"><span class="stat-label">Privé:</span><span class="stat-value" id="statPrivate">0</span></div>
-</div>
+        <button id="resetFilters" class="btn btn--primary btn--full-width">Réinitialiser les filtres</button>
+      </div>
 
-<!-- Legend Section -->
-<div id="legend" class="legend">
-<h2 class="section-title">Légende</h2>
-<div class="legend-subsection">
-<h3 class="legend-subtitle">Indice IPS</h3>
-<div class="legend-item"><span class="legend-color" style="background-color:#d32f2f"></span><span>&lt; 90 - Très défavorisé</span></div>
-<div class="legend-item"><span class="legend-color" style="background-color:#f57c00"></span><span>90-105 - Défavorisé</span></div>
-<div class="legend-item"><span class="legend-color" style="background-color:#fbc02d"></span><span>105-120 - Moyen</span></div>
-<div class="legend-item"><span class="legend-color" style="background-color:#7cb342"></span><span>120-130 - Favorisé</span></div>
-<div class="legend-item"><span class="legend-color" style="background-color:#388e3c"></span><span>&gt; 130 - Très favorisé</span></div>
-</div>
-<div class="legend-subsection">
-<h3 class="legend-subtitle">Type d'établissement</h3>
-<div class="legend-item"><span class="legend-shape legend-circle"></span><span>Écoles</span></div>
-<div class="legend-item"><span class="legend-shape legend-square"></span><span>Collèges</span></div>
-<div class="legend-item"><span class="legend-shape legend-diamond"></span><span>Lycées</span></div>
-</div>
-</div>
-</div>
-</aside>
+      <div id="statistics" class="statistics">
+        <h2 class="section-title">Statistiques</h2>
+        <div class="stat-item">Établissements affichés : <span id="statTotal">0</span></div>
+        <div class="stat-item">IPS moyen : <span id="statAvg">-</span></div>
+        <div class="stat-item">IPS min : <span id="statMin">-</span></div>
+        <div class="stat-item">IPS max : <span id="statMax">-</span></div>
+        <div class="stat-item">Public : <span id="statPublic">0</span></div>
+        <div class="stat-item">Privé : <span id="statPrivate">0</span></div>
+      </div>
 
-<!-- Map Container -->
-<main class="map-container">
-<div id="map" class="map"></div>
-</main>
+      <div id="legend" class="legend">
+        <h2 class="section-title">Légende</h2>
+        <div class="legend-subsection">
+          <h3 class="legend-subtitle">Indice IPS</h3>
+          <div class="legend-item"><span class="legend-color" style="background-color:#d32f2f;"></span>&lt; 90 - Très défavorisé</div>
+          <div class="legend-item"><span class="legend-color" style="background-color:#f57c00;"></span>90-105 - Défavorisé</div>
+          <div class="legend-item"><span class="legend-color" style="background-color:#fbc02d;"></span>105-120 - Moyen</div>
+          <div class="legend-item"><span class="legend-color" style="background-color:#7cb342;"></span>120-130 - Favorisé</div>
+          <div class="legend-item"><span class="legend-color" style="background-color:#388e3c;"></span>&gt; 130 - Très favorisé</div>
+        </div>
+        <div class="legend-subsection">
+          <h3 class="legend-subtitle">Type d'établissement</h3>
+          <div class="legend-item"><span class="legend-shape legend-circle"></span>Écoles</div>
+          <div class="legend-item"><span class="legend-shape legend-square"></span>Collèges</div>
+          <div class="legend-item"><span class="legend-shape legend-diamond"></span>Lycées</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+  
+  <main class="map-container">
+    <div id="map" class="map"></div>
+  </main>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
-<script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
