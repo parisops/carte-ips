@@ -195,6 +195,9 @@ function updateMarkers() {
 
 function createDetailedPopup(school) {
   const color = IPS_COLORS.getColor(school.ips);
+  const ipsDepartementalNum = parseFloat(school.ipsdepartemental);
+  const ipsDepartementalText = !isNaN(ipsDepartementalNum) ? ipsDepartementalNum.toFixed(1) : "N/A";
+
   let html = `
     <div class="popup-title">${escapeHtml(school.patronyme || school.denomination)}</div>
     <div class="popup-info">${escapeHtml(school.type || '')} - ${escapeHtml(school.sector || '')}</div>
@@ -204,7 +207,7 @@ function createDetailedPopup(school) {
       IPS: ${school.ips ? school.ips.toFixed(1) : 'N/A'}
     </div>
     <div class="popup-info">
-      IPS départemental: ${school.ipsdepartemental ? school.ipsdepartemental.toFixed(1) : 'N/A'}
+      IPS départemental: ${ipsDepartementalText}
     </div>
   `;
   if (school.nombre_total_eleves != null && school.nombre_total_classes != null) {
