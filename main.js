@@ -63,11 +63,11 @@ function initMap() {
 
 async function loadData() {
   const [ipsEcoles, ipsColleges, ipsLycees, localisations, effectifs] = await Promise.all([
-    fetch('/data/ips-ecoles.json').then(r => r.json()),
-    fetch('/data/ips-colleges.json').then(r => r.json()),
-    fetch('/data/ips-lycees.json').then(r => r.json()),
-    fetch('/data/localisations.json').then(r => r.json()),
-    fetch('/data/effectifs.json').then(r => r.json()),
+    fetch('data/ips-ecoles.json').then(r => r.json()),
+    fetch('data/ips-colleges.json').then(r => r.json()),
+    fetch('data/ips-lycees.json').then(r => r.json()),
+    fetch('data/localisations.json').then(r => r.json()),
+    fetch('data/effectifs.json').then(r => r.json()),
   ]);
 
   const locMap = new Map(localisations.map(l => [l.numero_uai.trim().toUpperCase(), l]));
