@@ -27,11 +27,11 @@ const ESTABLISHMENT_TYPES = {
 
 const IPS_COLORS = {
   getColor: (ips) => {
-    if (ips < 90) return '#d32f2f';         // rouge foncé
-    if (ips < 105) return '#f57c00';        // orange
-    if (ips < 120) return '#fbc02d';        // jaune
-    if (ips < 130) return '#3f51b5';        // bleu plus marqué (plus foncé)
-    return '#1a237e';                       // bleu très foncé, différencié
+    if (ips < 90) return '#d32f2f';
+    if (ips < 105) return '#f57c00';
+    if (ips < 120) return '#fbc02d';
+    if (ips < 130) return '#7cb342';
+    return '#388e3c';
   }
 };
 
