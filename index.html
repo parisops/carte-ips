@@ -1,58 +1,111 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8" />
-  <title>Carte Etablissements Pro</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet-sidebar-v2/css/leaflet-sidebar.css" />
-  <link rel="stylesheet" href="style.css" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Carte Interactive - IPS des Écoles</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div id="sidebar" class="leaflet-sidebar collapsed">
-    <div class="leaflet-sidebar-tabs">
-      <ul role="tablist">
-        <li><a href="#filters" role="tab" aria-selected="true" tabindex="0">Filtres et Légende</a></li>
-      </ul>
-    </div>
-    <div class="leaflet-sidebar-content" role="tabpanel">
-      <div class="leaflet-sidebar-pane" id="filters" aria-label="Filtres et Légende">
-        <h2 class="sidebar-header">Filtres</h2>
-        <div class="filter-group">
-          <label><input type="checkbox" class="type-filter" value="école" checked /> École (●)</label>
-          <label><input type="checkbox" class="type-filter" value="collège" checked /> Collège (■)</label>
-          <label><input type="checkbox" class="type-filter" value="lycée" checked /> Lycée (◆)</label>
-        </div>
-        <div class="filter-group ips-filter">
-          <label>IPS Min.<input id="ips-min" type="number" value="0" min="0" max="200" step="0.1" /></label>
-          <label>IPS Max.<input id="ips-max" type="number" value="200" min="0" max="200" step="0.1" /></label>
-        </div>
-        <button id="filtrer" class="btn-primary">Appliquer</button>
-        <hr />
-        <h2 class="sidebar-header">Légende</h2>
-        <div class="legend-section">
-          <div><span class="legend-marker circle"></span> École</div>
-          <div><span class="legend-marker square"></span> Collège</div>
-          <div><span class="legend-marker diamond"></span> Lycée</div>
-        </div>
-        <div class="legend-section mt-10">
-          <div><span class="legend-color red"></span> &lt; 90 (Très défavorisé)</div>
-          <div><span class="legend-color orange"></span> 90 – 105 (Défavorisé)</div>
-          <div><span class="legend-color yellow"></span> 105 – 120 (Moyen)</div>
-          <div><span class="legend-color lightgreen"></span> 120 – 130 (Favorisé)</div>
-          <div><span class="legend-color darkgreen"></span> ≥ 130 (Très favorisé)</div>
-        </div>
-      </div>
-    </div>
-  </div>
+<div class="app-container">
+<!-- Sidebar -->
+<aside class="sidebar">
+<div class="sidebar-content">
+<h1 class="title">Carte Interactive</h1>
+<p class="subtitle">[translate:Indice de Position Sociale des Établissements]</p>
 
-  <div id="map"></div>
+<!-- Filters Section -->
+<div id="filters" class="filters">
+<h2 class="section-title">Filtres</h2>
+<div class="form-group">
+<label class="form-label">Type d'établissement</label>
+<div class="checkbox-group">
+<label class="checkbox-label"><input type="checkbox" id="ecolesCheck" checked><span>Écoles</span></label>
+<label class="checkbox-label"><input type="checkbox" id="collegesCheck" checked><span>Collèges</span></label>
+<label class="checkbox-label"><input type="checkbox" id="lyceesLEGTCheck" checked><span>Lycées LEGT</span></label>
+<label class="checkbox-label"><input type="checkbox" id="lyceesLPOCheck" checked><span>Lycées LPO</span></label>
+<label class="checkbox-label"><input type="checkbox" id="lyceesLPCheck" checked><span>Lycées LP</span></label>
+<label class="checkbox-label"><input type="checkbox" id="lyceesAutresCheck" checked><span>Autres lycées</span></label>
+</div>
+</div>
 
-  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-  <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
-  <script src="https://unpkg.com/leaflet-sidebar-v2/js/leaflet-sidebar.min.js"></script>
-  <script src="main.js"></script>
+<div class="form-group">
+<label class="form-label">Région</label>
+<select id="regionFilter" class="form-control">
+<option value="">Toutes les régions</option>
+</select>
+</div>
+
+<div class="form-group">
+<label class="form-label">Département</label>
+<select id="departmentFilter" class="form-control">
+<option value="">Tous les départements</option>
+</select>
+</div>
+
+<div class="form-group">
+<label class="form-label">Secteur</label>
+<div class="checkbox-group">
+<label class="checkbox-label"><input type="checkbox" id="publicCheck" checked><span>Public</span></label>
+<label class="checkbox-label"><input type="checkbox" id="privateCheck" checked><span>Privé sous contrat</span></label>
+</div>
+</div>
+
+<div class="form-group">
+<label class="form-label">Plage IPS: <span id="ipsRangeLabel">45 - 185</span></label>
+<div class="range-inputs">
+<input type="number" id="ipsMin" class="form-control form-control-small" value="45" min="45" max="185">
+<span>-</span>
+<input type="number" id="ipsMax" class="form-control form-control-small" value="185" min="45" max="185">
+</div>
+</div>
+
+<button id="resetFilters" class="btn btn--primary btn--full-width">Réinitialiser les filtres</button>
+</div>
+
+<!-- Statistics Section -->
+<div id="statistics" class="statistics">
+<h2 class="section-title">Statistiques</h2>
+<div class="stat-item"><span class="stat-label">Établissements affichés:</span><span class="stat-value" id="statTotal">0</span></div>
+<div class="stat-item"><span class="stat-label">IPS moyen:</span><span class="stat-value" id="statAvg">-</span></div>
+<div class="stat-item"><span class="stat-label">IPS min:</span><span class="stat-value" id="statMin">-</span></div>
+<div class="stat-item"><span class="stat-label">IPS max:</span><span class="stat-value" id="statMax">-</span></div>
+<div class="stat-item"><span class="stat-label">Public:</span><span class="stat-value" id="statPublic">0</span></div>
+<div class="stat-item"><span class="stat-label">Privé:</span><span class="stat-value" id="statPrivate">0</span></div>
+</div>
+
+<!-- Legend Section -->
+<div id="legend" class="legend">
+<h2 class="section-title">Légende</h2>
+<div class="legend-subsection">
+<h3 class="legend-subtitle">Indice IPS</h3>
+<div class="legend-item"><span class="legend-color" style="background-color:#d32f2f"></span><span>&lt; 90 - Très défavorisé</span></div>
+<div class="legend-item"><span class="legend-color" style="background-color:#f57c00"></span><span>90-105 - Défavorisé</span></div>
+<div class="legend-item"><span class="legend-color" style="background-color:#fbc02d"></span><span>105-120 - Moyen</span></div>
+<div class="legend-item"><span class="legend-color" style="background-color:#7cb342"></span><span>120-130 - Favorisé</span></div>
+<div class="legend-item"><span class="legend-color" style="background-color:#388e3c"></span><span>&gt; 130 - Très favorisé</span></div>
+</div>
+<div class="legend-subsection">
+<h3 class="legend-subtitle">Type d'établissement</h3>
+<div class="legend-item"><span class="legend-shape legend-circle"></span><span>Écoles</span></div>
+<div class="legend-item"><span class="legend-shape legend-square"></span><span>Collèges</span></div>
+<div class="legend-item"><span class="legend-shape legend-diamond"></span><span>Lycées</span></div>
+</div>
+</div>
+</div>
+</aside>
+
+<!-- Map Container -->
+<main class="map-container">
+<div id="map" class="map"></div>
+</main>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+<script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
+<script src="app.js"></script>
 </body>
 </html>
