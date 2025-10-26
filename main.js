@@ -25,6 +25,7 @@ const ESTABLISHMENT_TYPES = {
   lycees: ['LYCEE ENSEIGNT GENERAL ET TECHNOLOGIQUE', 'LYCEE POLYVALENT', 'LYCEE PROFESSIONNEL', 'LYCEE D ENSEIGNEMENT GENERAL']
 };
 
+/*
 const IPS_COLORS = {
   getColor: (ips) => {
     if (ips < 90) return '#d32f2f';
@@ -33,7 +34,18 @@ const IPS_COLORS = {
     if (ips < 130) return '#7cb342';
     return '#388e3c';
   }
+};*/
+
+const IPS_COLORS = {
+  getColor: (ips) => {
+    if (ips < 90) return '#800000';        // rouge foncé très défavorisé
+    if (ips < 105) return '#b22222';       // rouge moins foncé
+    if (ips < 120) return '#ff6347';       // rouge clair (tomate)
+    if (ips < 130) return '#4169e1';       // bleu royal, plus foncé
+    return '#00008b';                      // bleu marine très foncé
+  }
 };
+
 
 async function init() {
   initMap();
