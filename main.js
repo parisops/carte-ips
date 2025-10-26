@@ -99,7 +99,7 @@ function processIPSData(data, type, ipsField, locMap, effMap) {
       longitude: loc.longitude,
       denom: loc.denomination_principale || e.denomination_principale || '',
       appellation: loc.appellation_officielle || '',
-      secteur: loc.secteur_public_prive_libe || 'Public',
+      sector: loc.secteur_public_prive_libe || 'Public',
       commune: loc.libelle_commune || '',
       departement: loc.libelle_departement || '',
       nombre_total_eleves: eff.nombre_total_eleves || null,
@@ -124,24 +124,20 @@ function populateFilters() {
 
 function applyFilters() {
   filteredSchools = allSchools.filter(school => {
-    const isEcole = school.type.toLowerCase().includes('école');
-    const isCollege = school.type.toLowerCase().includes('collège');
-    const isLyceeLEGT = school.type.includes('LEGT');
-    const isLyceeLPO = school.type.includes('LPO');
-    const isLyceeLP = school.type.includes('LP') && !school.type.includes('LPO');
-    const isLyceeAutre = school.type.toLowerCase().includes('lycée') && !isLyceeLEGT && !isLyceeLPO && !isLyceeLP;
-    if (isEcole && !currentFilters.types.ecoles) return false;
-    if (isCollege && !currentFilters.types.colleges) return false;
-    if (isLyceeLEGT && !currentFilters.types.lyceesLEGT) return false;
-    if (isLyceeLPO && !currentFilters.types.lyceesLPO) return false;
-    if (isLyceeLP && !currentFilters.types.lyceesLP) return false;
-    if (isLyceeAutre && !currentFilters.types.lyceesAutres) return false;
+    const type = school.type ? school.type.toLowerCase() : '';
+    const sector = school.sector ? school.sector.toLowerCase() : '';
+    if (type.includes('école') && !currentFilters.types.ecoles) return false;
+    if (type.includes('collège') && !currentFilters.types.colleges) return false;
+    if (type.includes('lycée')) {
+      if (school.type.includes('LEGT') && !currentFilters.types.lyceesLEGT) return false;
+      if (school.type.includes('LPO') && !currentFilters.types.lyceesLPO) return false;
+      if (school.type.includes('LP') && !school.type.includes('LPO') && !currentFilters.types.lyceesLP) return false;
+      if (!school.type.includes('LEGT') && !school.type.includes('LPO') && !school.type.includes('LP') && !currentFilters.types.lyceesAutres) return false;
+    }
     if (currentFilters.region && school.region !== currentFilters.region) return false;
-    if (currentFilters.department && school.department !== currentFilters.department) return false;
-    const isPublic = school.sector.toLowerCase().includes('public');
-    const isPrivate = school.sector.toLowerCase().includes('privé');
-    if (isPublic && !currentFilters.sectors.public) return false;
-    if (isPrivate && !currentFilters.sectors.private) return false;
+    if (currentFilters.department && school.departement !== currentFilters.department) return false;
+    if (sector.includes('public') && !currentFilters.sectors.public) return false;
+    if (sector.includes('privé') && !currentFilters.sectors.private) return false;
     if (school.ips < currentFilters.ipsMin || school.ips > currentFilters.ipsMax) return false;
     return true;
   });
@@ -155,34 +151,32 @@ function updateMarkers() {
   filteredSchools.forEach(school => {
     let marker;
     const color = IPS_COLORS.getColor(school.ips);
-    const isEcole = school.type.toLowerCase().includes('école');
-    const isCollege = school.type.toLowerCase().includes('collège');
-    const isLycee = school.type.toLowerCase().includes('lycée');
-    if (isEcole) {
+    const type = school.type ? school.type.toLowerCase() : '';
+    if (type.includes('école')) {
       marker = L.circleMarker([school.latitude, school.longitude], {
         radius: 8,
         fillColor: color,
         color: '#fff',
         weight: 2,
         opacity: 1,
-        fillOpacity: 0.9
+        fillOpacity: 0.9,
       });
-    } else if (isCollege) {
+    } else if (type.includes('collège')) {
       const icon = L.divIcon({
         className: 'custom-marker',
         html: `<div class="marker-square" style="background-color:${color};"></div>`,
-        iconSize: [14,14],
-        iconAnchor: [7,7],
-        popupAnchor: [0, -7]
+        iconSize: [14, 14],
+        iconAnchor: [7, 7],
+        popupAnchor: [0, -7],
       });
       marker = L.marker([school.latitude, school.longitude], { icon });
-    } else if (isLycee) {
+    } else if (type.includes('lycée')) {
       const icon = L.divIcon({
         className: 'custom-marker',
         html: `<div class="marker-diamond" style="background-color:${color};"></div>`,
-        iconSize: [16,16],
-        iconAnchor: [8,8],
-        popupAnchor: [0, -8]
+        iconSize: [16, 16],
+        iconAnchor: [8, 8],
+        popupAnchor: [0, -8],
       });
       marker = L.marker([school.latitude, school.longitude], { icon });
     } else {
@@ -192,7 +186,7 @@ function updateMarkers() {
         color: '#fff',
         weight: 2,
         opacity: 1,
-        fillOpacity: 0.9
+        fillOpacity: 0.9,
       });
     }
     marker.bindPopup(createDetailedPopup(school));
@@ -201,9 +195,7 @@ function updateMarkers() {
 }
 
 function createDetailedPopup(school) {
-  // implementation similar to previous example
-  // includes IPS scores, secteur, effectifs, etc.
-  let html = `<div class="popup-title">${escapeHtml(school.name)}</div>`;
+  let html = `<div class="popup-title">${escapeHtml(school.denom || school.appellation || school.uai)}</div>`;
   html += `<div class="popup-info">${escapeHtml(school.type)} • ${escapeHtml(school.sector)}</div>`;
   html += `<div class="popup-info">${escapeHtml(school.commune)}, ${escapeHtml(school.departement)}</div>`;
   html += `<div class="popup-divider"></div>`;
@@ -218,7 +210,7 @@ function createDetailedPopup(school) {
 function updateStatistics() {
   const total = filteredSchools.length;
   document.getElementById('statTotal').textContent = total;
-  if(total === 0){
+  if (total === 0) {
     document.getElementById('statAvg').textContent = '-';
     document.getElementById('statMin').textContent = '-';
     document.getElementById('statMax').textContent = '-';
@@ -227,12 +219,11 @@ function updateStatistics() {
     return;
   }
   let ipsValues = filteredSchools.map(s => s.ips);
-  let avg = ipsValues.reduce((a,b)=> a+b, 0)/total;
+  let avg = ipsValues.reduce((a, b) => a + b, 0) / total;
   let min = Math.min(...ipsValues);
   let max = Math.max(...ipsValues);
-  let pubCount = filteredSchools.filter(s=> s.sector.toLowerCase().includes('public')).length;
-  let privCount = filteredSchools.filter(s=> s.sector.toLowerCase().includes('privé')).length;
-
+  let pubCount = filteredSchools.filter(s => s.sector.toLowerCase().includes('public')).length;
+  let privCount = filteredSchools.filter(s => s.sector.toLowerCase().includes('privé')).length;
   document.getElementById('statAvg').textContent = avg.toFixed(1);
   document.getElementById('statMin').textContent = min.toFixed(1);
   document.getElementById('statMax').textContent = max.toFixed(1);
@@ -241,9 +232,9 @@ function updateStatistics() {
 }
 
 function zoomToFiltered() {
-  if(filteredSchools.length === 0) return;
+  if (filteredSchools.length === 0) return;
   let bounds = L.latLngBounds(filteredSchools.map(s => [s.latitude, s.longitude]));
-  map.fitBounds(bounds, {padding: [50, 50], maxZoom: 12});
+  map.fitBounds(bounds, { padding: [50, 50], maxZoom: 12 });
 }
 
 function setupEventListeners() {
@@ -313,7 +304,7 @@ function updateDepartmentFilter() {
   departmentSelect.innerHTML = '<option value="">Tous les départements</option>';
 
   let departments = [];
-  if(selectedRegion){
+  if (selectedRegion) {
     departments = [...new Set(allSchools.filter(s => s.region === selectedRegion).map(s => s.departement))];
   } else {
     departments = [...new Set(allSchools.map(s => s.departement))];
@@ -374,7 +365,7 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
-if(document.readyState === 'loading'){
+if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);
 } else {
   init();
