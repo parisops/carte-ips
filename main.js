@@ -9,10 +9,7 @@ let currentFilters = {
   types: {
     ecoles: true,
     colleges: true,
-    lyceesLEGT: true,
-    lyceesLPO: true,
-    lyceesLP: true,
-    lyceesAutres: true
+    lycees: true  // Filtre lycées regroupé
   },
   ipsMin: 45,
   ipsMax: 185
@@ -37,7 +34,7 @@ async function init() {
 }
 
 function initMap() {
-  // Center on Ile-de-France with zoom 6 on load
+  // Center on Ile-de-France with zoom 9 on load
   map = L.map('map').setView([48.7, 2.5], 9);
 
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -45,11 +42,8 @@ function initMap() {
     attribution: '© OpenStreetMap contributors'
   }).addTo(map);
 
-  // Instead of clustering, add markers directly
-  // Clear markers array
   markers = [];
 
-  // Update marker sizes on zoom
   map.on('zoomend', updateDynamicZoomSizes);
 }
 
@@ -101,7 +95,7 @@ function processIPSData(data, type, ipsField, locMap, effMap) {
 }
 
 function setupEventListeners() {
-  ['ecoles', 'colleges', 'lyceesLEGT', 'lyceesLPO', 'lyceesLP', 'lyceesAutres'].forEach(type => {
+  ['ecoles', 'colleges', 'lycees'].forEach(type => {
     document.getElementById(type + 'Check').addEventListener('change', e => {
       currentFilters.types[type] = e.target.checked;
       applyFilters();
@@ -156,11 +150,11 @@ function resetFilters() {
     region: '',
     department: '',
     sectors: { public: true, private: true },
-    types: { ecoles: true, colleges: true, lyceesLEGT: true, lyceesLPO: true, lyceesLP: true, lyceesAutres: true },
+    types: { ecoles: true, colleges: true, lycees: true },
     ipsMin: 45,
     ipsMax: 185
   };
-  ['ecoles', 'colleges', 'lyceesLEGT', 'lyceesLPO', 'lyceesLP', 'lyceesAutres'].forEach(type =>
+  ['ecoles', 'colleges', 'lycees'].forEach(type =>
     document.getElementById(type + 'Check').checked = true
   );
   document.getElementById('regionFilter').value = "";
@@ -171,7 +165,7 @@ function resetFilters() {
   document.getElementById('ipsMin').value = 45;
   document.getElementById('ipsMax').value = 185;
   updateIpsRangeLabel();
-  map.setView([48.7, 2.5], 6);
+  map.setView([48.7, 2.5], 9);
   applyFilters();
 }
 
@@ -181,12 +175,7 @@ function applyFilters() {
     const type = (school.type_long || "").toLowerCase();
     if (type === 'école' && !currentFilters.types.ecoles) return false;
     if (type === 'collège' && !currentFilters.types.colleges) return false;
-    if (type === 'lycée') {
-      if (school.denomination && school.denomination.includes('ENSEIGNT GENERAL ET TECHNOLOGIQUE') && !currentFilters.types.lyceesLEGT) return false;
-      if (school.denomination && school.denomination.includes('POLYVALENT') && !currentFilters.types.lyceesLPO) return false;
-      if (school.denomination && school.denomination.includes('PROFESSIONNEL') && !currentFilters.types.lyceesLP) return false;
-      if (!(school.denomination && (school.denomination.includes('ENSEIGNT GENERAL ET TECHNOLOGIQUE') || school.denomination.includes('POLYVALENT') || school.denomination.includes('PROFESSIONNEL'))) && !currentFilters.types.lyceesAutres) return false;
-    }
+    if (type === 'lycée' && !currentFilters.types.lycees) return false;
     if (currentFilters.region && school.region !== currentFilters.region) return false;
     if (currentFilters.department && school.departement !== currentFilters.department) return false;
     const sector = (school.sector || "").toLowerCase();
@@ -200,7 +189,6 @@ function applyFilters() {
 }
 
 function updateMarkers() {
-  // Remove existing markers
   markers.forEach(marker => map.removeLayer(marker));
   markers = [];
 
@@ -247,7 +235,7 @@ function updateMarkers() {
     markers.push(marker);
   });
 
-  updateDynamicZoomSizes(); 
+  updateDynamicZoomSizes();
 }
 
 function updateDynamicZoomSizes() {
@@ -258,7 +246,7 @@ function updateDynamicZoomSizes() {
   else if (zoom === 8) size = 8;
   else if (zoom === 9) size = 10;
   else if (zoom === 10) size = 12;
-  else if (zoom >= 11) size = 14; // max size can be adjusted
+  else if (zoom >= 11) size = 14;
 
   markers.forEach(marker => {
     const el = marker.getElement();
