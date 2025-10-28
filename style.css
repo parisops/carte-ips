@@ -77,12 +77,15 @@
   background-clip: padding-box;
   display: inline-block;
 }
+
 .marker-circle {
   border-radius: 50%;
 }
+
 .marker-square {
   border-radius: 3px;
 }
+
 .marker-diamond {
   border-radius: 4px;
   transform: rotate(45deg);
@@ -95,42 +98,49 @@
   width: 4px;
   height: 4px;
 }
+
 .leaflet-zoom-7 .marker-circle,
 .leaflet-zoom-7 .marker-square,
 .leaflet-zoom-7 .marker-diamond {
   width: 6px;
   height: 6px;
 }
+
 .leaflet-zoom-8 .marker-circle,
 .leaflet-zoom-8 .marker-square,
 .leaflet-zoom-8 .marker-diamond {
   width: 8px;
   height: 8px;
 }
+
 .leaflet-zoom-9 .marker-circle,
 .leaflet-zoom-9 .marker-square,
 .leaflet-zoom-9 .marker-diamond {
   width: 10px;
   height: 10px;
 }
+
 .leaflet-zoom-10 .marker-circle,
 .leaflet-zoom-10 .marker-square,
 .leaflet-zoom-10 .marker-diamond {
   width: 12px;
   height: 12px;
 }
+
 .leaflet-zoom-11 .marker-circle,
 .leaflet-zoom-11 .marker-square,
 .leaflet-zoom-11 .marker-diamond {
   width: 14px;
   height: 14px;
 }
+
 .leaflet-zoom-13 .marker-circle,
 .leaflet-zoom-13 .marker-square,
 .leaflet-zoom-13 .marker-diamond {
   width: 15px;
   height: 15px;
 }
+
 .leaflet-zoom-16 .marker-circle,
 .leaflet-zoom-16 .marker-square,
 .leaflet-zoom-16 .marker-diamond {
