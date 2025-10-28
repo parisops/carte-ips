@@ -38,7 +38,7 @@ async function init() {
 
 function initMap() {
   // Center on Ile-de-France with zoom 6 on load
-  map = L.map('map').setView([48.7, 2.5], 6);
+  map = L.map('map').setView([48.7, 2.5], 8);
 
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 18,
