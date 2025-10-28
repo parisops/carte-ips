@@ -48,7 +48,7 @@ async function init() {
 }
 
 function initMap() {
-  map = L.map('map').setView([48.7, 2.5], 9); // Zoom Île-de-France au démarrage
+  map = L.map('map').setView([48.7, 2.5], 6); // Zoom initial sur IDF, plus large pour voir tous les points
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap contributors',
     maxZoom: 18
@@ -114,7 +114,7 @@ function processIPSData(data, type, ipsField, locMap, effMap) {
 
 function setupEventListeners() {
   ['ecoles', 'colleges', 'lyceesLEGT', 'lyceesLPO', 'lyceesLP', 'lyceesAutres'].forEach(type => {
-    document.getElementById(type+'Check').addEventListener('change', e => {
+    document.getElementById(type + 'Check').addEventListener('change', e => {
       currentFilters.types[type] = e.target.checked;
       applyFilters();
     });
@@ -127,6 +127,7 @@ function setupEventListeners() {
   document.getElementById('ipsMax').addEventListener('input', e => { currentFilters.ipsMax = parseInt(e.target.value); updateIpsRangeLabel(); applyFilters(); });
   document.getElementById('resetFilters').addEventListener('click', resetFilters);
 }
+
 function updateDepartmentFilter() {
   const departmentSelect = document.getElementById('departmentFilter');
   const selectedRegion = currentFilters.region;
@@ -144,6 +145,7 @@ function updateDepartmentFilter() {
     departmentSelect.appendChild(option);
   });
 }
+
 function populateFilters() {
   const regions = [...new Set(allSchools.map(s => s.region))].filter(r => r).sort();
   const regionSelect = document.getElementById('regionFilter');
@@ -156,9 +158,11 @@ function populateFilters() {
   });
   updateDepartmentFilter();
 }
+
 function updateIpsRangeLabel() {
   document.getElementById('ipsRangeLabel').textContent = `${currentFilters.ipsMin} - ${currentFilters.ipsMax}`;
 }
+
 function resetFilters() {
   currentFilters = {
     region: '',
@@ -169,7 +173,7 @@ function resetFilters() {
     ipsMax: 185
   };
   ['ecoles', 'colleges', 'lyceesLEGT', 'lyceesLPO', 'lyceesLP', 'lyceesAutres'].forEach(type =>
-    document.getElementById(type+'Check').checked = true
+    document.getElementById(type + 'Check').checked = true
   );
   document.getElementById('regionFilter').value = "";
   updateDepartmentFilter();
@@ -179,9 +183,10 @@ function resetFilters() {
   document.getElementById('ipsMin').value = 45;
   document.getElementById('ipsMax').value = 185;
   updateIpsRangeLabel();
-  map.setView([48.7, 2.5], 9);
+  map.setView([48.7, 2.5], 6);
   applyFilters();
 }
+
 function applyFilters() {
   filteredSchools = allSchools.filter(school => {
     if (!school) return false;
@@ -255,8 +260,8 @@ function updateMarkers() {
 function updateDynamicZoomClasses() {
   if (!map || !map._container) return;
   const zoom = map.getZoom();
-  for (let i = 6; i <= 18; i++) map._container.classList.remove('leaflet-zoom-'+i);
-  map._container.classList.add('leaflet-zoom-'+zoom);
+  for (let i = 6; i <= 18; i++) map._container.classList.remove('leaflet-zoom-' + i);
+  map._container.classList.add('leaflet-zoom-' + zoom);
 }
 
 function createDetailedPopup(school) {
