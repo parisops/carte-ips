@@ -1,5 +1,5 @@
 let map = null;
-let markers = []; // array of all markers added
+let markers = [];
 let allSchools = [];
 let filteredSchools = [];
 let currentFilters = {
@@ -9,7 +9,7 @@ let currentFilters = {
   types: {
     ecoles: true,
     colleges: true,
-    lycees: true  // Filtre lycées regroupé
+    lycees: true
   },
   ipsMin: 45,
   ipsMax: 185
@@ -34,16 +34,12 @@ async function init() {
 }
 
 function initMap() {
-  // Center on Ile-de-France with zoom 9 on load
   map = L.map('map').setView([48.7, 2.5], 9);
-
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 18,
     attribution: '© OpenStreetMap contributors'
   }).addTo(map);
-
   markers = [];
-
   map.on('zoomend', updateDynamicZoomSizes);
 }
 
@@ -53,7 +49,7 @@ async function loadData() {
     fetch('data/ips-colleges.json').then(r => r.json()),
     fetch('data/ips-lycees.json').then(r => r.json()),
     fetch('data/localisations.json').then(r => r.json()),
-    fetch('data/effectifs.json').then(r => r.json()),
+    fetch('data/effectifs.json').then(r => r.json())
   ]);
   const locMap = new Map(localisations.map(l => [l.numero_uai.trim().toUpperCase(), l]));
   const effMap = new Map(effectifs.map(e => [((e.numero_ecole || e.numero_uai) || '').trim().toUpperCase(), e]));
@@ -86,9 +82,12 @@ function processIPSData(data, type, ipsField, locMap, effMap) {
       patronyme: loc.patronyme_uai || loc.denomination_principale || '',
       sector: loc.secteur_public_prive_libe || 'Public',
       commune: loc.libelle_commune || "",
+      ips_commune: parseFloat(e.ips_commune) || null,
+      ips_departemental: parseFloat(e.ips_departemental) || null,
+      ips_academique: parseFloat(e.ips_academique) || null,
+      ips_national: parseFloat(e.ips_national) || null,
       nombre_total_eleves: eff.nombre_total_eleves || null,
       nombre_total_classes: eff.nombre_total_classes || null,
-      ipsdepartemental: e.ips_departemental || null,
       type_long: type
     }];
   });
@@ -262,8 +261,29 @@ function updateDynamicZoomSizes() {
 
 function createDetailedPopup(school) {
   const color = IPS_COLORS.getColor(school.ips);
-  const ipsDepartementalNum = parseFloat(school.ipsdepartemental);
-  const ipsDepartementalText = !isNaN(ipsDepartementalNum) ? ipsDepartementalNum.toFixed(1) : "N/A";
+
+  function diffPts(val1, val2) {
+    if (val1 === null || val2 === null || val1 === undefined || val2 === undefined) return null;
+    return Math.abs(val1 - val2);
+  }
+
+  const diffVille = diffPts(school.ips, school.ips_commune);
+  const diffDept = diffPts(school.ips, school.ips_departemental);
+  const diffAcad = diffPts(school.ips, school.ips_academique);
+  const diffNat = diffPts(school.ips, school.ips_national);
+
+  const diffItems = [];
+  if (diffVille !== null) diffItems.push(`${diffVille.toFixed(2)} points par rapport à la moyenne à "ville"`);
+  if (diffDept !== null) diffItems.push(`${diffDept.toFixed(2)} points par rapport à "département"`);
+  if (diffAcad !== null) diffItems.push(`${diffAcad.toFixed(2)} points par rapport à l'Académie de "académie"`);
+  if (diffNat !== null) diffItems.push(`${diffNat.toFixed(2)} points par rapport à la moyenne nationale`);
+
+  const diffsHtml = diffItems.length > 0
+    ? `<div style="margin-top:0.8em;"><strong>Écarts IPS :</strong><ul style="padding-left:1em; margin-top:0.3em;">` +
+    diffItems.map(item => `<li>${item}</li>`).join('') +
+    `</ul></div>`
+    : '';
+
   let html = `
     <div class="popup-title">${escapeHtml(school.patronyme || school.denomination || "")}</div>
     <div class="popup-info">${escapeHtml(school.denomination || school.type_long || "")} - ${escapeHtml(school.sector || '')}</div>
@@ -272,10 +292,9 @@ function createDetailedPopup(school) {
     <div class="popup-main-ips" style="background-color: ${color}; color:#222; border: 1px solid #eee;">
       IPS: <span style="font-weight:bold;color:#222">${school.ips ? school.ips.toFixed(1) : 'N/A'}</span>
     </div>
-    <div class="popup-info" style="color:#222">
-      IPS départemental: <span style="font-weight:bold; color:#222">${ipsDepartementalText}</span>
-    </div>
+    ${diffsHtml}
   `;
+
   if (school.nombre_total_eleves != null && school.nombre_total_classes != null) {
     html += `
       <div class="popup-compact-row">
