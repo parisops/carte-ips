@@ -264,7 +264,15 @@ function createDetailedPopup(school) {
 
   function diffPts(val1, val2) {
     if (val1 === null || val2 === null || val1 === undefined || val2 === undefined) return null;
-    return Math.abs(val1 - val2);
+    return val1 - val2; // garder signe
+  }
+
+  function formatDiff(diff, name) {
+    if (diff === null) return '';
+    const absDiff = Math.abs(diff).toFixed(2);
+    const colorStyle = diff > 0 ? 'green' : (diff < 0 ? 'red' : 'black');
+    const strongName = `<strong>${escapeHtml(name)}</strong>`;
+    return `<li style="color:${colorStyle};">${absDiff} points par rapport à ${strongName}</li>`;
   }
 
   const diffVille = diffPts(school.ips, school.ips_commune);
@@ -273,15 +281,15 @@ function createDetailedPopup(school) {
   const diffNat = diffPts(school.ips, school.ips_national);
 
   const diffItems = [];
-  if (diffVille !== null) diffItems.push(`${diffVille.toFixed(2)} points par rapport à la moyenne à "ville"`);
-  if (diffDept !== null) diffItems.push(`${diffDept.toFixed(2)} points par rapport à "département"`);
-  if (diffAcad !== null) diffItems.push(`${diffAcad.toFixed(2)} points par rapport à l'Académie de "académie"`);
-  if (diffNat !== null) diffItems.push(`${diffNat.toFixed(2)} points par rapport à la moyenne nationale`);
+  if (diffVille !== null) diffItems.push(formatDiff(diffVille, school.commune || "ville"));
+  if (diffDept !== null) diffItems.push(formatDiff(diffDept, school.departement || "département"));
+  if (diffAcad !== null) diffItems.push(formatDiff(diffAcad, "l'Académie de " + (school.academie || "académie")));
+  if (diffNat !== null) diffItems.push(formatDiff(diffNat, "la moyenne nationale"));
 
-  const diffsHtml = diffItems.length > 0
+  const diffsHtml = diffItems.length > 0 
     ? `<div style="margin-top:0.8em;"><strong>Écarts IPS :</strong><ul style="padding-left:1em; margin-top:0.3em;">` +
-    diffItems.map(item => `<li>${item}</li>`).join('') +
-    `</ul></div>`
+      diffItems.join('') +
+      `</ul></div>`
     : '';
 
   let html = `
@@ -305,6 +313,7 @@ function createDetailedPopup(school) {
   }
   return html;
 }
+
 
 function escapeHtml(text) {
   if (!text) return '';
