@@ -82,6 +82,7 @@ function processIPSData(data, type, ipsField, locMap, effMap) {
       patronyme: loc.patronyme_uai || loc.denomination_principale || '',
       sector: loc.secteur_public_prive_libe || 'Public',
       commune: loc.libelle_commune || "",
+      academie: loc.academie || e.academie || "", // Note ajout pour le nom académie
       ips_commune: parseFloat(e.ips_commune) || null,
       ips_departemental: parseFloat(e.ips_departemental) || null,
       ips_academique: parseFloat(e.ips_academique) || null,
@@ -264,15 +265,16 @@ function createDetailedPopup(school) {
 
   function diffPts(val1, val2) {
     if (val1 === null || val2 === null || val1 === undefined || val2 === undefined) return null;
-    return val1 - val2; // garder signe
+    return val1 - val2;
   }
 
   function formatDiff(diff, name) {
     if (diff === null) return '';
     const absDiff = Math.abs(diff).toFixed(2);
     const colorStyle = diff > 0 ? 'green' : (diff < 0 ? 'red' : 'black');
-    const strongName = `<strong>${escapeHtml(name)}</strong>`;
-    return `<li style="color:${colorStyle};">${absDiff} points par rapport à ${strongName}</li>`;
+    return `<div style="margin-bottom:4px;">` +
+           `<span style="font-weight:bold; color:${colorStyle};">${absDiff}</span> points par rapport à <strong>${escapeHtml(name)}</strong>` +
+           `</div>`;
   }
 
   const diffVille = diffPts(school.ips, school.ips_commune);
@@ -283,13 +285,13 @@ function createDetailedPopup(school) {
   const diffItems = [];
   if (diffVille !== null) diffItems.push(formatDiff(diffVille, school.commune || "ville"));
   if (diffDept !== null) diffItems.push(formatDiff(diffDept, school.departement || "département"));
-  if (diffAcad !== null) diffItems.push(formatDiff(diffAcad, "l'Académie de " + (school.academie || "académie")));
+  if (diffAcad !== null) diffItems.push(formatDiff(diffAcad, (school.academie ? "l'Académie de " + school.academie : "académie")));
   if (diffNat !== null) diffItems.push(formatDiff(diffNat, "la moyenne nationale"));
 
   const diffsHtml = diffItems.length > 0 
-    ? `<div style="margin-top:0.8em;"><strong>Écarts IPS :</strong><ul style="padding-left:1em; margin-top:0.3em;">` +
+    ? `<div style="margin-top:0.8em;"><strong>Écarts IPS :</strong>` +
       diffItems.join('') +
-      `</ul></div>`
+      `</div>`
     : '';
 
   let html = `
@@ -313,7 +315,6 @@ function createDetailedPopup(school) {
   }
   return html;
 }
-
 
 function escapeHtml(text) {
   if (!text) return '';
