@@ -1,5 +1,5 @@
 let map = null;
-let markersCluster = null;
+let markers = []; // array of all markers added
 let allSchools = [];
 let filteredSchools = [];
 let currentFilters = {
@@ -16,17 +16,6 @@ let currentFilters = {
   },
   ipsMin: 45,
   ipsMax: 185
-};
-
-const ESTABLISHMENT_TYPES = {
-  ecoles: ['ECOLE MATERNELLE', 'ECOLE DE NIVEAU ELEMENTAIRE', 'ECOLE PRIMAIRE'],
-  colleges: ['COLLEGE'],
-  lycees: [
-    'LYCEE ENSEIGNT GENERAL ET TECHNOLOGIQUE',
-    'LYCEE POLYVALENT',
-    'LYCEE PROFESSIONNEL',
-    'LYCEE D ENSEIGNEMENT GENERAL'
-  ]
 };
 
 const IPS_COLORS = {
@@ -48,20 +37,20 @@ async function init() {
 }
 
 function initMap() {
-  map = L.map('map').setView([48.7, 2.5], 6); // Zoom initial sur IDF, plus large pour voir tous les points
+  // Center on Ile-de-France with zoom 6 on load
+  map = L.map('map').setView([48.7, 2.5], 6);
+
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap contributors',
-    maxZoom: 18
+    maxZoom: 18,
+    attribution: '© OpenStreetMap contributors'
   }).addTo(map);
-  markersCluster = L.markerClusterGroup({
-    maxClusterRadius: 10,
-    chunkedLoading: true,
-    disableClusteringAtZoom: 14,
-    spiderfyOnMaxZoom: true,
-    showCoverageOnHover: false
-  });
-  map.addLayer(markersCluster);
-  map.on('zoomend', updateDynamicZoomClasses);
+
+  // Instead of clustering, add markers directly
+  // Clear markers array
+  markers = [];
+
+  // Update marker sizes on zoom
+  map.on('zoomend', updateDynamicZoomSizes);
 }
 
 async function loadData() {
@@ -100,7 +89,6 @@ function processIPSData(data, type, ipsField, locMap, effMap) {
       latitude: loc.latitude,
       longitude: loc.longitude,
       denomination: loc.denomination_principale || e.denomination_principale || '',
-      appellation: loc.appellation_officielle || '',
       patronyme: loc.patronyme_uai || loc.denomination_principale || '',
       sector: loc.secteur_public_prive_libe || 'Public',
       commune: loc.libelle_commune || "",
@@ -212,7 +200,10 @@ function applyFilters() {
 }
 
 function updateMarkers() {
-  markersCluster.clearLayers();
+  // Remove existing markers
+  markers.forEach(marker => map.removeLayer(marker));
+  markers = [];
+
   filteredSchools.forEach(school => {
     const color = IPS_COLORS.getColor(school.ips);
     const type = school.type_long;
@@ -252,16 +243,33 @@ function updateMarkers() {
     }
     const marker = L.marker([school.latitude, school.longitude], { icon });
     marker.bindPopup(createDetailedPopup(school));
-    markersCluster.addLayer(marker);
+    marker.addTo(map);
+    markers.push(marker);
   });
-  updateDynamicZoomClasses();
+
+  updateDynamicZoomSizes(); 
 }
 
-function updateDynamicZoomClasses() {
-  if (!map || !map._container) return;
+function updateDynamicZoomSizes() {
   const zoom = map.getZoom();
-  for (let i = 6; i <= 18; i++) map._container.classList.remove('leaflet-zoom-' + i);
-  map._container.classList.add('leaflet-zoom-' + zoom);
+  let size;
+  if (zoom <= 6) size = 4;
+  else if (zoom === 7) size = 6;
+  else if (zoom === 8) size = 8;
+  else if (zoom === 9) size = 10;
+  else if (zoom === 10) size = 12;
+  else if (zoom >= 11) size = 14; // max size can be adjusted
+
+  markers.forEach(marker => {
+    const el = marker.getElement();
+    if (el) {
+      const child = el.querySelector('div');
+      if (child) {
+        child.style.width = `${size}px`;
+        child.style.height = `${size}px`;
+      }
+    }
+  });
 }
 
 function createDetailedPopup(school) {
