@@ -1,0 +1,26 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  font-family: "Inter", sans-serif;
+  background: #f3eee1;
+}
+
+/* Leaflet a besoin de connaître la taille de son conteneur explicitement */
+.leaflet-container {
+  height: 100%;
+  width: 100%;
+  background: #f3eee1;
+  font-family: "Inter", sans-serif;
+}
+
+.leaflet-tooltip {
+  border-radius: 10px !important;
+  border: none !important;
+  box-shadow: 0 8px 20px -8px rgba(18, 32, 58, 0.35) !important;
+}
