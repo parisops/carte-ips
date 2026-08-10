@@ -6,24 +6,21 @@ import { joinByUai } from "../utils/joinData";
 // plutôt qu'importées, pour ne pas les embarquer dans le bundle JS de l'app.
 // `import.meta.env.BASE_URL` respecte le `base` de vite.config.js (nécessaire
 // pour un déploiement en sous-dossier comme GitHub Pages : sans ça, ces
-// chemins absolus ignoreraient le préfixe "/edu-idf-map/" et 404eraient).
+// chemins absolus ignoreraient le préfixe "/carte-ips/" et 404eraient).
 const URL_IDENTITE = `${import.meta.env.BASE_URL}data/identite.json`;
 const URL_INDICATEURS = `${import.meta.env.BASE_URL}data/indicateurs.json`;
 const URL_RESULTATS = `${import.meta.env.BASE_URL}data/resultats.json`;
+
 // Valeurs par défaut des filtres — les bornes IPS sont recalculées
 // dynamiquement à partir des données réelles au chargement (cf. init()).
 const FILTRES_PAR_DEFAUT = {
   types: { École: true, Collège: true, Lycée: true },
-  // NB: la donnée source (secteur_public_prive_libe) ne connaît que "Public"
-  // et "Privé" — pas "Privé sous contrat". Utiliser la bonne valeur ici est
-  // important : une clé qui ne correspond à aucune valeur réelle du champ
-  // `statut` fait échouer `filtres.statuts[e.statut]` en permanence (retourne
-  // toujours `undefined`), donc exclut ces établissements quel que soit
-  // l'état de la case à cocher — c'est le bug qui vient d'être corrigé.
   statuts: { Public: true, Privé: true },
   dispositifs: { ulis: false, segpa: false, rep: false },
   ipsMin: 0,
   recherche: "",
+  departement: "Tous", // AJOUT — filtre département (repère README "Aller plus loin")
+  departementsDisponibles: [], // AJOUT — rempli dynamiquement dans init()
 };
 
 export const useEtablissementsStore = create((set, get) => ({
@@ -33,22 +30,12 @@ export const useEtablissementsStore = create((set, get) => ({
   erreurChargement: null,
   etablissementSelectionneId: null,
   resultatsCharges: false,
-  // Bornes réelles des données (pas des filtres) : utilisées pour dimensionner
-  // les marqueurs sur la carte selon l'effectif, et graduer la légende IPS.
   bornesIps: [50, 170],
   bornesEffectif: [0, 2000],
 
   // --- Filtres ---
   filtres: FILTRES_PAR_DEFAUT,
 
-  /**
-   * À appeler une fois au montage de l'app : récupère l'identité et les
-   * indicateurs (nécessaires dès le premier rendu de la carte : couleur,
-   * forme, taille des marqueurs en dépendent), les joint sur `code_uai`, et
-   * fige les bornes des sliders. `resultats.json` (résultats scolaires,
-   * ~700 Ko) N'EST PAS chargé ici : rien sur la carte n'en dépend, seule la
-   * fiche d'un établissement l'utilise — cf. `chargerResultatsSiBesoin()`.
-   */
   init: async () => {
     try {
       const [identite, indicateurs] = await Promise.all([
@@ -68,6 +55,12 @@ export const useEtablissementsStore = create((set, get) => ({
 
       const ipsRangeArrondi = [Math.floor(ipsMin / 10) * 10, Math.ceil(ipsMax / 10) * 10];
 
+      // AJOUT — liste triée des départements réellement présents dans les données,
+      // pour peupler le <select> du nouveau filtre sans valeur codée en dur.
+      const departementsDisponibles = Array.from(
+        new Set(fusion.map((e) => e.departement).filter(Boolean))
+      ).sort();
+
       set({
         etablissements: fusion,
         isLoaded: true,
@@ -76,6 +69,7 @@ export const useEtablissementsStore = create((set, get) => ({
         filtres: {
           ...FILTRES_PAR_DEFAUT,
           ipsMin: ipsRangeArrondi[0],
+          departementsDisponibles, // AJOUT
         },
       });
     } catch (err) {
@@ -83,27 +77,20 @@ export const useEtablissementsStore = create((set, get) => ({
     }
   },
 
-  /**
-   * Charge resultats.json à la demande (premier clic sur un établissement),
-   * et le fusionne dans les établissements déjà en mémoire. `joinByUai` est
-   * générique : lui repasser le tableau déjà fusionné + les nouveaux
-   * résultats fonctionne exactement comme au premier chargement.
-   */
   chargerResultatsSiBesoin: async () => {
     if (get().resultatsCharges) return;
-    set({ resultatsCharges: true }); // évite un double-fetch si cliqué 2x vite
+    set({ resultatsCharges: true });
     try {
       const resultats = await fetch(URL_RESULTATS).then((r) => r.json());
       set((state) => ({ etablissements: joinByUai(state.etablissements, resultats) }));
     } catch {
-      set({ resultatsCharges: false }); // on retentera au prochain clic
+      set({ resultatsCharges: false });
     }
   },
 
   setFiltre: (chemin, valeur) =>
     set((state) => {
       const filtres = structuredClone(state.filtres);
-      // chemin ex: "types.Collège" ou "ipsMin"
       const parts = chemin.split(".");
       if (parts.length === 1) {
         filtres[parts[0]] = valeur;
@@ -114,7 +101,13 @@ export const useEtablissementsStore = create((set, get) => ({
     }),
 
   resetFiltres: () =>
-    set((state) => ({ filtres: { ...FILTRES_PAR_DEFAUT, ipsMin: state.bornesIps[0] } })),
+    set((state) => ({
+      filtres: {
+        ...FILTRES_PAR_DEFAUT,
+        ipsMin: state.bornesIps[0],
+        departementsDisponibles: state.filtres.departementsDisponibles, // AJOUT — conserve la liste déjà calculée
+      },
+    })),
 
   selectionnerEtablissement: (code_uai) => {
     set({ etablissementSelectionneId: code_uai });
@@ -141,6 +134,10 @@ export function useEtablissementsFiltres() {
       if (!filtres.types[e.type_etablissement]) return false;
       if (!filtres.statuts[e.statut]) return false;
 
+      // AJOUT — filtre département
+      if (filtres.departement && filtres.departement !== "Tous" && e.departement !== filtres.departement)
+        return false;
+
       if (filtres.dispositifs.ulis && !(e.effectif_ulis > 0)) return false;
       if (filtres.dispositifs.segpa && !(e.effectif_segpa > 0)) return false;
       if (filtres.dispositifs.rep && !e.label_rep) return false;
@@ -149,7 +146,8 @@ export function useEtablissementsFiltres() {
       if (ips != null && ips < filtres.ipsMin) return false;
 
       if (recherche) {
-        const cible = `${e.nom_etablissement} ${e.commune}`.toLowerCase();
+        // AJOUT — recherche étendue au code postal et au code UAI (audit priorité 2)
+        const cible = `${e.nom_etablissement} ${e.commune} ${e.code_postal ?? ""} ${e.code_uai ?? ""}`.toLowerCase();
         if (!cible.includes(recherche)) return false;
       }
 
