@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { MapContainer, TileLayer, Marker, Tooltip, useMap } from "react-leaflet";
 import MarkerClusterGroup from "react-leaflet-cluster";
 import L from "leaflet";
@@ -11,6 +11,11 @@ import { couleurDegradeIPS, tailleDepuisEffectif, CLIP_PATH_PAR_FORME, FORME_PAR
 
 const CENTRE_IDF = [48.8499, 2.6377];
 const ZOOM_INITIAL = 9;
+const ZOOM_INITIAL_DEZOOME = 7; // point de départ de l'animation d'entrée (cf. RecentrageInitial)
+
+// Seuil de largeur d'écran en dessous duquel on considère l'appareil "mobile"
+// pour adapter le comportement du clustering (cf. maxClusterRadius plus bas).
+const SEUIL_MOBILE_PX = 768;
 
 /**
  * Icône DivIcon : couleur = IPS (moyen si plusieurs établissements au même
@@ -29,12 +34,6 @@ function creerIcone(site, estSelectionne, effectifMin, effectifMax) {
   const taille = tailleDepuisEffectif(site.effectifTotal, effectifMin, effectifMax) + (estSelectionne ? 6 : 0);
   const couleurContour = estSelectionne ? "#12203A" : "#FAF7F0";
 
-  // La combinaison CSS `border` + `clip-path` sur un même élément ne se
-  // comporte pas de façon fiable (la bordure "fuit" hors de la forme
-  // découpée selon les navigateurs). À la place : deux calques empilés avec
-  // le MÊME clip-path — un plus grand en dessous (couleur du contour), un
-  // plus petit au-dessus (couleur IPS) — ce qui donne un contour net qui
-  // épouse exactement la forme, quel que soit rond/carré/hexagone/losange.
   const epaisseurContour = 1.5;
   const tailleExt = taille + epaisseurContour * 2;
 
@@ -112,11 +111,65 @@ function RecentrerSurSelection({ etablissement }) {
   return null;
 }
 
+/**
+ * AJOUT 1 — Cadrage initial calculé sur l'étendue réelle des données
+ * (fitBounds) plutôt qu'un centre/zoom fixe, avec padding de sécurité pour
+ * qu'aucun cluster ne soit coupé par le bord de l'écran au premier affichage.
+ *
+ * AJOUT 3 — Animation d'entrée : la carte démarre légèrement dézoomée
+ * (ZOOM_INITIAL_DEZOOME) puis anime un zoom doux vers le cadrage final sur
+ * ~700ms. Le mouvement communique immédiatement "voici un ensemble de
+ * nombreux points" — plus efficace qu'une image statique pour faire
+ * comprendre au premier regard qu'on observe un nuage de données, surtout
+ * sur un écran mobile où la vue est plus contrainte.
+ */
+function RecentrageInitial({ sites }) {
+  const map = useMap();
+  const [dejaCadre, setDejaCadre] = useState(false);
+
+  useEffect(() => {
+    if (dejaCadre || sites.length === 0) return;
+
+    const points = sites.map((s) => [s.latitude, s.longitude]);
+    const bounds = L.latLngBounds(points);
+
+    // Padding en pixels : marge de sécurité pour qu'un cluster en bord
+    // d'étendue ne se retrouve jamais collé (ou coupé) sur le bord de
+    // l'écran, y compris sur les petits écrans mobiles.
+    const padding = [48, 48];
+
+    map.setView(CENTRE_IDF, ZOOM_INITIAL_DEZOOME, { animate: false });
+
+    const timer = setTimeout(() => {
+      map.flyToBounds(bounds, { padding, duration: 0.7, maxZoom: ZOOM_INITIAL });
+    }, 120);
+
+    setDejaCadre(true);
+    return () => clearTimeout(timer);
+  }, [sites, map, dejaCadre]);
+
+  return null;
+}
+
 export default function CarteEtablissements() {
   const etablissements = useEtablissementsFiltres();
   const selectionnerEtablissement = useEtablissementsStore((s) => s.selectionnerEtablissement);
   const selectionId = useEtablissementsStore((s) => s.etablissementSelectionneId);
   const bornesEffectif = useEtablissementsStore((s) => s.bornesEffectif);
+
+  // AJOUT 4 — Rayon de clustering adaptatif : sur mobile, un rayon plus
+  // large réduit le nombre de petits clusters proches les uns des autres
+  // près des bords de l'écran, ce qui limite le risque qu'un cluster se
+  // retrouve à cheval sur la limite visible (donc perçu comme "coupé").
+  const [estMobile, setEstMobile] = useState(
+    typeof window !== "undefined" && window.innerWidth < SEUIL_MOBILE_PX
+  );
+  useEffect(() => {
+    const onResize = () => setEstMobile(window.innerWidth < SEUIL_MOBILE_PX);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+  const rayonCluster = estMobile ? 26 : 14;
 
   const sites = useMemo(() => {
     return regrouperParSite(etablissements).map((site) => {
@@ -125,8 +178,6 @@ export default function CarteEtablissements() {
       return {
         ...site,
         ipsMoyen: ipsConnus.length ? ipsConnus.reduce((a, b) => a + b, 0) / ipsConnus.length : null,
-        // Taille du marqueur = effectif CUMULÉ du site (plusieurs établissements
-        // au même endroit = un point visuellement plus important sur la carte).
         effectifTotal: effectifsConnus.length ? effectifsConnus.reduce((a, b) => a + b, 0) : null,
       };
     });
@@ -143,12 +194,6 @@ export default function CarteEtablissements() {
         zoomControl={false}
       >
         <TileLayer
-          // Voyager (avec labels) plutôt que Positron sans labels : palette
-          // plus chaude (crème/vert), rues et noms de rues visibles. Le
-          // rendu détaillé des petites rues n'apparaît qu'à partir d'un
-          // certain zoom (comportement normal des fonds vectoriels
-          // rasterisés) — à zoom 9 (vue Île-de-France), seuls les grands
-          // axes sont visibles, c'est attendu.
           url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
           attribution='&copy; OpenStreetMap contributors &copy; CARTO'
         />
@@ -156,7 +201,7 @@ export default function CarteEtablissements() {
         <MarkerClusterGroup
           chunkedLoading
           iconCreateFunction={creerIconeCluster}
-          maxClusterRadius={14}
+          maxClusterRadius={rayonCluster}
           disableClusteringAtZoom={12}
           spiderfyOnMaxZoom
         >
@@ -215,8 +260,24 @@ export default function CarteEtablissements() {
           })}
         </MarkerClusterGroup>
 
+        <RecentrageInitial sites={sites} />
         <RecentrerSurSelection etablissement={etablissementSelectionne} />
       </MapContainer>
+
+      {/*
+        AJOUT 2 — Vignette de fondu sur les bords de la carte : un cluster
+        partiellement visible en bord d'écran s'estompe progressivement au
+        lieu d'être tranché net, ce qui évite l'effet "morceau de cercle"
+        signalé sur mobile. Dégradés transparents → sable-100 sur ~28px,
+        pointer-events désactivés pour ne jamais bloquer les interactions
+        avec la carte en dessous.
+      */}
+      <div className="pointer-events-none absolute inset-0 z-[900]">
+        <div className="absolute inset-x-0 top-0 h-7 bg-gradient-to-b from-sable-100/70 to-transparent" />
+        <div className="absolute inset-x-0 bottom-0 h-7 bg-gradient-to-t from-sable-100/70 to-transparent" />
+        <div className="absolute inset-y-0 left-0 w-7 bg-gradient-to-r from-sable-100/70 to-transparent" />
+        <div className="absolute inset-y-0 right-0 w-7 bg-gradient-to-l from-sable-100/70 to-transparent" />
+      </div>
 
       <div className="absolute right-4 top-4 z-[1000] rounded-xl bg-sable-50/95 px-3 py-1.5 font-mono text-xs text-encre-600 shadow-panel">
         {etablissements.length} établissement{etablissements.length > 1 ? "s" : ""} · {sites.length} point
