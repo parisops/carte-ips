@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { MapContainer, TileLayer, Marker, Tooltip, useMap } from "react-leaflet";
 import MarkerClusterGroup from "react-leaflet-cluster";
 import L from "leaflet";
@@ -10,11 +10,7 @@ import { regrouperParSite } from "../utils/joinData";
 import { couleurDegradeIPS, tailleDepuisEffectif, CLIP_PATH_PAR_FORME, FORME_PAR_TYPE } from "../utils/ipsColor";
 
 const CENTRE_IDF = [48.8499, 2.6377];
-const ZOOM_INITIAL = 9;
-const ZOOM_INITIAL_DEZOOME = 7; // point de départ de l'animation d'entrée (cf. RecentrageInitial)
-
-// Seuil de largeur d'écran en dessous duquel on considère l'appareil "mobile"
-// pour adapter le comportement du clustering (cf. maxClusterRadius plus bas).
+const ZOOM_IDF = 9;
 const SEUIL_MOBILE_PX = 768;
 
 /**
@@ -100,6 +96,33 @@ function creerIconeCluster(cluster) {
   });
 }
 
+/**
+ * Icône bulle de département : vue "d'ensemble" par défaut, une bulle par
+ * département avec le nombre d'établissements et une couleur = IPS moyen du
+ * département. Bien plus lisible au premier coup d'œil que ~7600 points
+ * individuels, et évite le besoin d'un cadrage très dézoomé sur toute la
+ * région pour rester lisible.
+ */
+function creerIconeDepartement(dept, estMobile) {
+  const taille = estMobile ? 72 : 84;
+  const couleur = couleurDegradeIPS(dept.ipsMoyen);
+  return L.divIcon({
+    html: `<div style="
+      width:${taille}px;height:${taille}px;border-radius:50%;
+      background:#FAF7F0;border:6px solid ${couleur};
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      font-family:'Inter',sans-serif;color:#12203A;text-align:center;padding:4px;
+      box-shadow:0 6px 16px rgba(18,32,58,0.35);cursor:pointer;
+    ">
+      <span style="font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:${estMobile ? 15 : 17}px;line-height:1;">${dept.count}</span>
+      <span style="font-size:${estMobile ? 9 : 10}px;font-weight:600;line-height:1.15;margin-top:2px;">${dept.nom}</span>
+    </div>`,
+    className: "",
+    iconSize: [taille, taille],
+    iconAnchor: [taille / 2, taille / 2],
+  });
+}
+
 /** Recentre la carte quand la sélection change, sans jamais dézoomer. */
 function RecentrerSurSelection({ etablissement }) {
   const map = useMap();
@@ -112,41 +135,52 @@ function RecentrerSurSelection({ etablissement }) {
 }
 
 /**
- * AJOUT 1 — Cadrage initial calculé sur l'étendue réelle des données
- * (fitBounds) plutôt qu'un centre/zoom fixe, avec padding de sécurité pour
- * qu'aucun cluster ne soit coupé par le bord de l'écran au premier affichage.
- *
- * AJOUT 3 — Animation d'entrée : la carte démarre légèrement dézoomée
- * (ZOOM_INITIAL_DEZOOME) puis anime un zoom doux vers le cadrage final sur
- * ~700ms. Le mouvement communique immédiatement "voici un ensemble de
- * nombreux points" — plus efficace qu'une image statique pour faire
- * comprendre au premier regard qu'on observe un nuage de données, surtout
- * sur un écran mobile où la vue est plus contrainte.
+ * Cadrage initial UNIQUE au montage (pas d'animation en deux temps) : évite
+ * l'effet "trop dézoomé" ressenti avec l'ancien cadrage qui démarrait
+ * volontairement dézoomé avant d'animer vers la vue finale. Ici on fitBounds
+ * directement sur l'étendue réelle des données, une seule fois.
  */
-function RecentrageInitial({ sites }) {
+function CadrageInitial({ bounds }) {
   const map = useMap();
-  const [dejaCadre, setDejaCadre] = useState(false);
+  const [fait, setFait] = useState(false);
+  useEffect(() => {
+    if (fait || !bounds) return;
+    map.fitBounds(bounds, { padding: [32, 32], maxZoom: ZOOM_IDF });
+    setFait(true);
+  }, [bounds, map, fait]);
+  return null;
+}
+
+/**
+ * Recentre la carte quand le filtre département change — que ce changement
+ * vienne d'un clic sur une bulle département (vue d'ensemble) ou du <select>
+ * du panneau de filtres (même state partagé, cf. useEtablissementsStore) :
+ * les deux déclenchent exactement le même comportement de zoom.
+ * Le premier rendu est ignoré : c'est `CadrageInitial` qui gère le cadrage
+ * au montage, pour éviter un double mouvement de carte à l'ouverture.
+ */
+function RecentrageSurDepartement({ departement, sitesDuDepartement }) {
+  const map = useMap();
+  const premierRendu = useRef(true);
+
+  const bounds = useMemo(() => {
+    if (departement === "Tous" || sitesDuDepartement.length === 0) return null;
+    return L.latLngBounds(sitesDuDepartement.map((s) => [s.latitude, s.longitude]));
+  }, [departement, sitesDuDepartement]);
 
   useEffect(() => {
-    if (dejaCadre || sites.length === 0) return;
-
-    const points = sites.map((s) => [s.latitude, s.longitude]);
-    const bounds = L.latLngBounds(points);
-
-    // Padding en pixels : marge de sécurité pour qu'un cluster en bord
-    // d'étendue ne se retrouve jamais collé (ou coupé) sur le bord de
-    // l'écran, y compris sur les petits écrans mobiles.
-    const padding = [48, 48];
-
-    map.setView(CENTRE_IDF, ZOOM_INITIAL_DEZOOME, { animate: false });
-
-    const timer = setTimeout(() => {
-      map.flyToBounds(bounds, { padding, duration: 0.7, maxZoom: ZOOM_INITIAL });
-    }, 120);
-
-    setDejaCadre(true);
-    return () => clearTimeout(timer);
-  }, [sites, map, dejaCadre]);
+    if (premierRendu.current) {
+      premierRendu.current = false;
+      return;
+    }
+    if (departement === "Tous") {
+      map.flyTo(CENTRE_IDF, ZOOM_IDF, { duration: 0.6 });
+      return;
+    }
+    if (bounds) {
+      map.flyToBounds(bounds, { padding: [40, 40], duration: 0.6, maxZoom: 13 });
+    }
+  }, [departement, bounds, map]);
 
   return null;
 }
@@ -156,11 +190,11 @@ export default function CarteEtablissements() {
   const selectionnerEtablissement = useEtablissementsStore((s) => s.selectionnerEtablissement);
   const selectionId = useEtablissementsStore((s) => s.etablissementSelectionneId);
   const bornesEffectif = useEtablissementsStore((s) => s.bornesEffectif);
+  const filtres = useEtablissementsStore((s) => s.filtres);
+  const setFiltre = useEtablissementsStore((s) => s.setFiltre);
 
-  // AJOUT 4 — Rayon de clustering adaptatif : sur mobile, un rayon plus
-  // large réduit le nombre de petits clusters proches les uns des autres
-  // près des bords de l'écran, ce qui limite le risque qu'un cluster se
-  // retrouve à cheval sur la limite visible (donc perçu comme "coupé").
+  // Rayon de clustering adaptatif : sur mobile, un rayon plus large réduit le
+  // nombre de petits clusters proches des bords de l'écran en petit format.
   const [estMobile, setEstMobile] = useState(
     typeof window !== "undefined" && window.innerWidth < SEUIL_MOBILE_PX
   );
@@ -179,17 +213,59 @@ export default function CarteEtablissements() {
         ...site,
         ipsMoyen: ipsConnus.length ? ipsConnus.reduce((a, b) => a + b, 0) / ipsConnus.length : null,
         effectifTotal: effectifsConnus.length ? effectifsConnus.reduce((a, b) => a + b, 0) : null,
+        departement: site.membres[0]?.departement ?? null,
       };
     });
   }, [etablissements]);
 
+  // Bulles de département : vue "d'ensemble" par défaut (filtre = "Tous"),
+  // une bulle par département avec position moyenne, IPS moyen pondéré et
+  // nombre total d'établissements.
+  const sitesParDepartement = useMemo(() => {
+    const groupes = new Map();
+    for (const site of sites) {
+      if (!site.departement) continue;
+      if (!groupes.has(site.departement)) groupes.set(site.departement, []);
+      groupes.get(site.departement).push(site);
+    }
+    return Array.from(groupes.entries()).map(([nom, sitesGroupe]) => {
+      const lat = sitesGroupe.reduce((a, s) => a + s.latitude, 0) / sitesGroupe.length;
+      const lon = sitesGroupe.reduce((a, s) => a + s.longitude, 0) / sitesGroupe.length;
+      const ipsConnus = sitesGroupe.map((s) => s.ipsMoyen).filter((v) => v != null);
+      const count = sitesGroupe.reduce((a, s) => a + s.membres.length, 0);
+      return {
+        nom,
+        latitude: lat,
+        longitude: lon,
+        count,
+        ipsMoyen: ipsConnus.length ? ipsConnus.reduce((a, b) => a + b, 0) / ipsConnus.length : null,
+      };
+    });
+  }, [sites]);
+
+  const boundsIDF = useMemo(() => {
+    if (sites.length === 0) return null;
+    return L.latLngBounds(sites.map((s) => [s.latitude, s.longitude]));
+  }, [sites]);
+
+  const sitesDuDepartementFiltre = useMemo(
+    () => sites.filter((s) => s.departement === filtres.departement),
+    [sites, filtres.departement]
+  );
+
   const etablissementSelectionne = etablissements.find((e) => e.code_uai === selectionId) ?? null;
+
+  // Vue "d'ensemble" (bulles département) tant qu'aucun département n'est
+  // choisi ; vue "détail" (marqueurs individuels + clustering habituel) dès
+  // qu'un département est sélectionné, via une bulle OU le <select> du
+  // panneau de filtres — les deux partagent le même state.
+  const vueEnsemble = filtres.departement === "Tous";
 
   return (
     <div className="relative h-full w-full overflow-hidden rounded-none md:rounded-2xl md:shadow-panel">
       <MapContainer
         center={CENTRE_IDF}
-        zoom={ZOOM_INITIAL}
+        zoom={ZOOM_IDF}
         className="h-full w-full"
         zoomControl={false}
       >
@@ -198,77 +274,102 @@ export default function CarteEtablissements() {
           attribution='&copy; OpenStreetMap contributors &copy; CARTO'
         />
 
-        <MarkerClusterGroup
-          chunkedLoading
-          iconCreateFunction={creerIconeCluster}
-          maxClusterRadius={rayonCluster}
-          disableClusteringAtZoom={12}
-          spiderfyOnMaxZoom
-        >
-          {sites.map((site) => {
-            const estSiteSelectionne = site.membres.some((m) => m.code_uai === selectionId);
-            const principal = site.membres.find((m) => m.code_uai === selectionId) ?? site.membres[0];
-            return (
-              <Marker
-                key={site.site_key}
-                position={[site.latitude, site.longitude]}
-                icon={creerIcone(site, estSiteSelectionne, bornesEffectif[0], bornesEffectif[1])}
-                ips={site.ipsMoyen}
-                eventHandlers={{
-                  click: () => selectionnerEtablissement(principal.code_uai),
-                }}
-              >
-                <Tooltip direction="top" offset={[0, -12]} opacity={1}>
-                  <div className="font-body text-sm">
-                    {site.membres.length === 1 ? (
-                      <>
-                        <p className="font-semibold text-encre-950">{principal.nom_etablissement}</p>
-                        <p className="text-encre-600">{principal.commune}</p>
-                        <p className="text-encre-400">
-                          {principal.ips_etablissement != null ? (
-                            <>
-                              IPS&nbsp;: <span className="font-mono">{principal.ips_etablissement}</span>
-                            </>
-                          ) : (
-                            "IPS non publié"
-                          )}
-                          {principal.effectif_total != null && (
-                            <> · {principal.effectif_total} élèves</>
-                          )}
-                        </p>
-                      </>
-                    ) : (
-                      <>
-                        <p className="font-semibold text-encre-950">
-                          {site.membres.length} établissements à cette adresse
-                        </p>
-                        <p className="text-encre-600">{principal.commune}</p>
-                        <ul className="mt-1 list-disc pl-4">
-                          {site.membres.map((m) => (
-                            <li key={m.code_uai}>
-                              {m.type_etablissement} — {m.nom_etablissement}
-                              {m.ips_etablissement != null && ` (IPS ${m.ips_etablissement})`}
-                            </li>
-                          ))}
-                        </ul>
-                      </>
-                    )}
-                  </div>
-                </Tooltip>
-              </Marker>
-            );
-          })}
-        </MarkerClusterGroup>
+        {vueEnsemble ? (
+          sitesParDepartement.map((dept) => (
+            <Marker
+              key={dept.nom}
+              position={[dept.latitude, dept.longitude]}
+              icon={creerIconeDepartement(dept, estMobile)}
+              eventHandlers={{ click: () => setFiltre("departement", dept.nom) }}
+            >
+              <Tooltip direction="top" offset={[0, -12]} opacity={1}>
+                <div className="font-body text-sm">
+                  <p className="font-semibold text-encre-950">{dept.nom}</p>
+                  <p className="text-encre-600">{dept.count} établissements</p>
+                  {dept.ipsMoyen != null && (
+                    <p className="text-encre-400">
+                      IPS moyen&nbsp;: <span className="font-mono">{Math.round(dept.ipsMoyen)}</span>
+                    </p>
+                  )}
+                </div>
+              </Tooltip>
+            </Marker>
+          ))
+        ) : (
+          <MarkerClusterGroup
+            chunkedLoading
+            iconCreateFunction={creerIconeCluster}
+            maxClusterRadius={rayonCluster}
+            disableClusteringAtZoom={12}
+            spiderfyOnMaxZoom
+          >
+            {sites.map((site) => {
+              const estSiteSelectionne = site.membres.some((m) => m.code_uai === selectionId);
+              const principal = site.membres.find((m) => m.code_uai === selectionId) ?? site.membres[0];
+              return (
+                <Marker
+                  key={site.site_key}
+                  position={[site.latitude, site.longitude]}
+                  icon={creerIcone(site, estSiteSelectionne, bornesEffectif[0], bornesEffectif[1])}
+                  ips={site.ipsMoyen}
+                  eventHandlers={{
+                    click: () => selectionnerEtablissement(principal.code_uai),
+                  }}
+                >
+                  <Tooltip direction="top" offset={[0, -12]} opacity={1}>
+                    <div className="font-body text-sm">
+                      {site.membres.length === 1 ? (
+                        <>
+                          <p className="font-semibold text-encre-950">{principal.nom_etablissement}</p>
+                          <p className="text-encre-600">{principal.commune}</p>
+                          <p className="text-encre-400">
+                            {principal.ips_etablissement != null ? (
+                              <>
+                                IPS&nbsp;: <span className="font-mono">{principal.ips_etablissement}</span>
+                              </>
+                            ) : (
+                              "IPS non publié"
+                            )}
+                            {principal.effectif_total != null && (
+                              <> · {principal.effectif_total} élèves</>
+                            )}
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <p className="font-semibold text-encre-950">
+                            {site.membres.length} établissements à cette adresse
+                          </p>
+                          <p className="text-encre-600">{principal.commune}</p>
+                          <ul className="mt-1 list-disc pl-4">
+                            {site.membres.map((m) => (
+                              <li key={m.code_uai}>
+                                {m.type_etablissement} — {m.nom_etablissement}
+                                {m.ips_etablissement != null && ` (IPS ${m.ips_etablissement})`}
+                              </li>
+                            ))}
+                          </ul>
+                        </>
+                      )}
+                    </div>
+                  </Tooltip>
+                </Marker>
+              );
+            })}
+          </MarkerClusterGroup>
+        )}
 
-        <RecentrageInitial sites={sites} />
+        <CadrageInitial bounds={boundsIDF} />
+        <RecentrageSurDepartement
+          departement={filtres.departement}
+          sitesDuDepartement={sitesDuDepartementFiltre}
+        />
         <RecentrerSurSelection etablissement={etablissementSelectionne} />
       </MapContainer>
 
       {/*
-        AJOUT 2 — Vignette de fondu sur les bords de la carte : un cluster
-        partiellement visible en bord d'écran s'estompe progressivement au
-        lieu d'être tranché net, ce qui évite l'effet "morceau de cercle"
-        signalé sur mobile. Dégradés transparents → sable-100 sur ~28px,
+        Vignette de fondu sur les bords de la carte : un marqueur/cluster
+        proche du bord s'estompe progressivement au lieu d'être tranché net.
         pointer-events désactivés pour ne jamais bloquer les interactions
         avec la carte en dessous.
       */}
@@ -279,9 +380,19 @@ export default function CarteEtablissements() {
         <div className="absolute inset-y-0 right-0 w-7 bg-gradient-to-l from-sable-100/70 to-transparent" />
       </div>
 
-      <div className="absolute right-4 top-4 z-[1000] rounded-xl bg-sable-50/95 px-3 py-1.5 font-mono text-xs text-encre-600 shadow-panel">
-        {etablissements.length} établissement{etablissements.length > 1 ? "s" : ""} · {sites.length} point
-        {sites.length > 1 ? "s" : ""} sur la carte
+      <div className="absolute right-4 top-4 z-[1000] flex flex-col items-end gap-2">
+        {!vueEnsemble && (
+          <button
+            onClick={() => setFiltre("departement", "Tous")}
+            className="rounded-full bg-encre-950 px-3 py-1.5 font-body text-xs font-semibold text-sable-50 shadow-panel"
+          >
+            ← Tous les départements
+          </button>
+        )}
+        <div className="rounded-xl bg-sable-50/95 px-3 py-1.5 font-mono text-xs text-encre-600 shadow-panel">
+          {etablissements.length} établissement{etablissements.length > 1 ? "s" : ""} · {sites.length} point
+          {sites.length > 1 ? "s" : ""} sur la carte
+        </div>
       </div>
     </div>
   );
