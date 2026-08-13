@@ -3,12 +3,19 @@ import { useEtablissementsStore } from "./hooks/useEtablissementsStore";
 import FiltresPanel from "./components/FiltresPanel";
 import ChipsFiltresActifs from "./components/ChipsFiltresActifs";
 import CarteEtablissements from "./components/CarteEtablissements";
+import { LogoTrajectoires } from "./components/EcranOnboarding";
 
 // PanneauDetail embarque tout Recharts (jauges, anneaux, barres) — inutile
 // dans le bundle initial pour quelqu'un qui n'a encore cliqué aucun
 // marqueur. Chargé à la demande, seulement au premier clic.
 const PanneauDetail = lazy(() => import("./components/PanneauDetail"));
 const MentionsLegales = lazy(() => import("./components/MentionsLegales"));
+const EcranOnboarding = lazy(() => import("./components/EcranOnboarding"));
+
+// Clé localStorage pour n'afficher automatiquement l'écran d'onboarding qu'à
+// la toute première visite — un visiteur récurrent n'a pas besoin de le
+// revoir à chaque chargement, mais garde le bouton "?" pour le rouvrir.
+const CLE_DEJA_VU = "trajectoires:onboarding-vu";
 
 /**
  * REFONTE LAYOUT — principe : la carte occupe TOUJOURS 100% de l'espace
@@ -30,10 +37,21 @@ export default function App() {
 
   const [filtresOuverts, setFiltresOuverts] = useState(false);
   const [mentionsOuvertes, setMentionsOuvertes] = useState(false);
+  const [onboardingOuvert, setOnboardingOuvert] = useState(
+    () => typeof window !== "undefined" && !localStorage.getItem(CLE_DEJA_VU)
+  );
 
+  // Le chargement des données (~7 Mo) démarre immédiatement, en parallèle de
+  // l'écran d'onboarding : le temps de lecture masque une bonne partie du
+  // temps de chargement réel, la carte est déjà prête au clic "Découvrir".
   useEffect(() => {
     init();
   }, [init]);
+
+  const fermerOnboarding = () => {
+    localStorage.setItem(CLE_DEJA_VU, "1");
+    setOnboardingOuvert(false);
+  };
 
   // Un seul panneau mobile actif à la fois : ouvrir les filtres ferme
   // automatiquement la fiche détail, et inversement (cf. clic marqueur
@@ -60,11 +78,22 @@ export default function App() {
         )}
       </div>
 
-      {/* Titre + accès mentions légales — coin haut, ne capte le clic que sur son propre bloc */}
+      {/* Bandeau de marque léger — logo + nom, bouton "?" pour rouvrir l'onboarding */}
       <header className="pointer-events-none absolute inset-x-0 top-0 z-[1000] flex items-start justify-between p-3 md:p-4">
-        <h1 className="pointer-events-auto rounded-xl bg-sable-50/95 px-3 py-2 font-display text-sm font-semibold text-encre-950 shadow-panel md:text-base">
-          Explorateur d'établissements IDF
-        </h1>
+        <div className="pointer-events-auto flex items-center gap-2 rounded-xl bg-sable-50/95 px-3 py-2 shadow-panel">
+          <LogoTrajectoires taille={22} />
+          <p className="font-display text-sm font-semibold text-encre-950 md:text-base">
+            Trajectoires
+          </p>
+        </div>
+
+        <button
+          onClick={() => setOnboardingOuvert(true)}
+          className="pointer-events-auto flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sable-50/95 font-mono text-sm font-bold text-encre-600 shadow-panel hover:bg-white"
+          aria-label="À propos de Trajectoires"
+        >
+          ?
+        </button>
       </header>
 
       {/* === DESKTOP : panneau filtres flottant, collapsible === */}
@@ -120,6 +149,12 @@ export default function App() {
       {mentionsOuvertes && (
         <Suspense fallback={null}>
           <MentionsLegales onClose={() => setMentionsOuvertes(false)} />
+        </Suspense>
+      )}
+
+      {onboardingOuvert && (
+        <Suspense fallback={null}>
+          <EcranOnboarding onFermer={fermerOnboarding} />
         </Suspense>
       )}
     </div>
