@@ -1,47 +1,53 @@
 import { create } from "zustand";
 import { joinByUai } from "../utils/joinData";
 
-// Les données réelles (data.education.gouv.fr, ~9000 établissements Île-de-France,
-// pré-normalisées par scripts/prepare_data.py) sont servies comme assets statiques
-// plutôt qu'importées, pour ne pas les embarquer dans le bundle JS de l'app.
-// `import.meta.env.BASE_URL` respecte le `base` de vite.config.js (nécessaire
-// pour un déploiement en sous-dossier comme GitHub Pages : sans ça, ces
-// chemins absolus ignoreraient le préfixe "/carte-ips/" et 404eraient).
 const URL_IDENTITE = `${import.meta.env.BASE_URL}data/identite.json`;
 const URL_INDICATEURS = `${import.meta.env.BASE_URL}data/indicateurs.json`;
 const URL_RESULTATS = `${import.meta.env.BASE_URL}data/resultats.json`;
 
-// Valeurs par défaut des filtres — les bornes IPS sont recalculées
-// dynamiquement à partir des données réelles au chargement (cf. init()).
 const FILTRES_PAR_DEFAUT = {
   types: { École: true, Collège: true, Lycée: true },
   statuts: { Public: true, Privé: true },
   dispositifs: { ulis: false, segpa: false, rep: false },
   ipsMin: 0,
   recherche: "",
-  departement: "Tous", // AJOUT — filtre département (repère README "Aller plus loin")
-  departementsDisponibles: [], // AJOUT — rempli dynamiquement dans init()
+  departement: "Tous",
+  departementsDisponibles: [],
 };
 
 export const useEtablissementsStore = create((set, get) => ({
-  // --- Données ---
   etablissements: [],
   isLoaded: false,
+  indicateursCharges: false,
   erreurChargement: null,
   etablissementSelectionneId: null,
   resultatsCharges: false,
   bornesIps: [50, 170],
   bornesEffectif: [0, 2000],
 
-  // --- Filtres ---
   filtres: FILTRES_PAR_DEFAUT,
 
   init: async () => {
     try {
-      const [identite, indicateurs] = await Promise.all([
-        fetch(URL_IDENTITE).then((r) => r.json()),
-        fetch(URL_INDICATEURS).then((r) => r.json()),
-      ]);
+      const identite = await fetch(URL_IDENTITE).then((r) => {
+        if (!r.ok) throw new Error(`identite.json : HTTP ${r.status}`);
+        return r.json();
+      });
+
+      const departementsDisponibles = Array.from(
+        new Set(identite.map((e) => e.departement).filter(Boolean))
+      ).sort();
+
+      set({
+        etablissements: identite,
+        isLoaded: true,
+        filtres: { ...FILTRES_PAR_DEFAUT, departementsDisponibles },
+      });
+
+      const indicateurs = await fetch(URL_INDICATEURS).then((r) => {
+        if (!r.ok) throw new Error(`indicateurs.json : HTTP ${r.status}`);
+        return r.json();
+      });
 
       const fusion = joinByUai(identite, indicateurs);
 
@@ -52,26 +58,15 @@ export const useEtablissementsStore = create((set, get) => ({
       const ipsMax = ipsValues.length ? Math.max(...ipsValues) : 200;
       const effectifMin = effectifValues.length ? Math.min(...effectifValues) : 0;
       const effectifMax = effectifValues.length ? Math.max(...effectifValues) : 2000;
-
       const ipsRangeArrondi = [Math.floor(ipsMin / 10) * 10, Math.ceil(ipsMax / 10) * 10];
 
-      // AJOUT — liste triée des départements réellement présents dans les données,
-      // pour peupler le <select> du nouveau filtre sans valeur codée en dur.
-      const departementsDisponibles = Array.from(
-        new Set(fusion.map((e) => e.departement).filter(Boolean))
-      ).sort();
-
-      set({
+      set((state) => ({
         etablissements: fusion,
-        isLoaded: true,
+        indicateursCharges: true,
         bornesIps: ipsRangeArrondi,
         bornesEffectif: [effectifMin, effectifMax],
-        filtres: {
-          ...FILTRES_PAR_DEFAUT,
-          ipsMin: ipsRangeArrondi[0],
-          departementsDisponibles, // AJOUT
-        },
-      });
+        filtres: { ...state.filtres, ipsMin: ipsRangeArrondi[0] },
+      }));
     } catch (err) {
       set({ erreurChargement: err.message ?? "Erreur de chargement des données" });
     }
@@ -105,7 +100,7 @@ export const useEtablissementsStore = create((set, get) => ({
       filtres: {
         ...FILTRES_PAR_DEFAUT,
         ipsMin: state.bornesIps[0],
-        departementsDisponibles: state.filtres.departementsDisponibles, // AJOUT — conserve la liste déjà calculée
+        departementsDisponibles: state.filtres.departementsDisponibles,
       },
     })),
 
@@ -116,11 +111,6 @@ export const useEtablissementsStore = create((set, get) => ({
   fermerPanneau: () => set({ etablissementSelectionneId: null }),
 }));
 
-/**
- * Hook dérivé : applique les filtres (opérateur ET) et mémoïse le résultat.
- * Séparé du store pour que useMemo se recalcule uniquement quand
- * `etablissements` ou `filtres` changent réellement.
- */
 import { useMemo } from "react";
 
 export function useEtablissementsFiltres() {
@@ -132,9 +122,8 @@ export function useEtablissementsFiltres() {
 
     return etablissements.filter((e) => {
       if (!filtres.types[e.type_etablissement]) return false;
-      if (!filtres.statuts[e.statut]) return false;
+      if (e.statut != null && !filtres.statuts[e.statut]) return false;
 
-      // AJOUT — filtre département
       if (filtres.departement && filtres.departement !== "Tous" && e.departement !== filtres.departement)
         return false;
 
@@ -146,7 +135,6 @@ export function useEtablissementsFiltres() {
       if (ips != null && ips < filtres.ipsMin) return false;
 
       if (recherche) {
-        // AJOUT — recherche étendue au code postal et au code UAI (audit priorité 2)
         const cible = `${e.nom_etablissement} ${e.commune} ${e.code_postal ?? ""} ${e.code_uai ?? ""}`.toLowerCase();
         if (!cible.includes(recherche)) return false;
       }

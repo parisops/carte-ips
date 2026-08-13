@@ -1,5 +1,5 @@
-import { useState, useRef, useCallback } from "react";
-import { X, MapPin, Hash, Users, PersonStanding, School, ChevronDown } from "lucide-react";
+import { useState, useRef, useCallback, useEffect } from "react";
+import { X, MapPin, Hash, Users, PersonStanding, School, ChevronDown, ChevronUp } from "lucide-react";
 import {
   useEtablissementSelectionne,
   useEtablissementsStore,
@@ -65,6 +65,22 @@ export default function PanneauDetail({ variant = "flottant-desktop" }) {
 
   const sheet = useBottomSheetDrag("mi");
 
+  const contenuRef = useRef(null);
+  const [peutScroller, setPeutScroller] = useState(false);
+  useEffect(() => {
+    const el = contenuRef.current;
+    if (!el) return;
+    const verifier = () => setPeutScroller(el.scrollHeight - el.scrollTop - el.clientHeight > 24);
+    verifier();
+    el.addEventListener("scroll", verifier);
+    const observer = new ResizeObserver(verifier);
+    observer.observe(el);
+    return () => {
+      el.removeEventListener("scroll", verifier);
+      observer.disconnect();
+    };
+  }, [etablissement, sheet.etat]);
+
   if (!etablissement) return null;
 
   const fratrie = tousLesEtablissements.filter(
@@ -97,16 +113,19 @@ export default function PanneauDetail({ variant = "flottant-desktop" }) {
 
   if (variant === "flottant-desktop") {
     return (
-      <aside
-        className="pointer-events-auto absolute right-4 top-20 flex max-h-[calc(100%-6rem)] w-[380px] flex-col overflow-hidden rounded-2xl border border-sable-200 bg-sable-50 shadow-panel"
-      >
+      <aside className="pointer-events-auto absolute right-4 top-20 flex max-h-[calc(100%-6rem)] w-[380px] flex-col overflow-hidden rounded-2xl border border-sable-200 bg-sable-50 shadow-panel">
         <EnTeteFiche
           etablissement={etablissement}
           fratrie={fratrie}
           onFermer={fermerPanneau}
           onSelectFratrie={selectionnerEtablissement}
         />
-        <div className="overflow-y-auto px-5 py-5">{contenu}</div>
+        <div ref={contenuRef} className="overflow-y-auto px-5 py-5">
+          {contenu}
+        </div>
+        {peutScroller && (
+          <div className="pointer-events-none relative -mt-8 h-8 bg-gradient-to-t from-sable-50 to-transparent" />
+        )}
       </aside>
     );
   }
@@ -124,12 +143,33 @@ export default function PanneauDetail({ variant = "flottant-desktop" }) {
         style={{ height: `${hauteur}dvh` }}
       >
         <div
-          className="flex shrink-0 cursor-grab flex-col items-center pb-1 pt-2 touch-none"
+          className="group flex shrink-0 cursor-grab touch-none flex-col items-center justify-center gap-1 py-2.5 active:bg-sable-100"
           onPointerDown={sheet.onPointerDown}
           onPointerMove={sheet.onPointerMove}
           onPointerUp={sheet.onPointerUp}
+          role="slider"
+          aria-label="Redimensionner le panneau"
+          aria-valuenow={Math.round(hauteur)}
+          aria-valuemin={6}
+          aria-valuemax={96}
         >
-          <div className="h-1.5 w-10 rounded-full bg-sable-200" />
+          <div className="h-1.5 w-12 rounded-full bg-sable-300 transition-colors group-active:bg-encre-600" />
+          <div className="flex gap-1">
+            <button
+              onClick={() => sheet.setEtat(sheet.etat === "peek" ? "mi" : sheet.etat === "mi" ? "plein" : "plein")}
+              className="rounded-full p-0.5 text-encre-400 hover:text-encre-600"
+              aria-label="Agrandir le panneau"
+            >
+              <ChevronUp size={14} />
+            </button>
+            <button
+              onClick={() => sheet.setEtat(sheet.etat === "plein" ? "mi" : sheet.etat === "mi" ? "peek" : "peek")}
+              className="rounded-full p-0.5 text-encre-400 hover:text-encre-600"
+              aria-label="Réduire le panneau"
+            >
+              <ChevronDown size={14} />
+            </button>
+          </div>
         </div>
 
         <EnTeteFiche
@@ -141,7 +181,14 @@ export default function PanneauDetail({ variant = "flottant-desktop" }) {
         />
 
         {sheet.etat !== "peek" && (
-          <div className="flex-1 overflow-y-auto px-5 pb-8 pt-2">{contenu}</div>
+          <div className="relative flex-1 overflow-hidden">
+            <div ref={contenuRef} className="h-full overflow-y-auto px-5 pb-8 pt-2">
+              {contenu}
+            </div>
+            {peutScroller && (
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-sable-50 to-transparent" />
+            )}
+          </div>
         )}
 
         {sheet.etat === "peek" && (

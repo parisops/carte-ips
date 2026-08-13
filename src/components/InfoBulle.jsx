@@ -1,49 +1,70 @@
-import { useState, useRef, useEffect, useId } from "react";
+import { useState, useRef, useEffect, useId, useLayoutEffect } from "react";
+import { createPortal } from "react-dom";
 import { HelpCircle } from "lucide-react";
 
-/**
- * Bouton d'aide contextuelle accessible : un "?" qui ouvre un petit panneau
- * explicatif au clic (souris ET tactile — contrairement à l'attribut `title`
- * natif, invisible sur mobile), se ferme au clic extérieur ou à Échap, et
- * expose les attributs ARIA recommandés pour les infobulles.
- *
- * `taille` : "petite" (badge rond 16px, dans le flux du texte) ou "normale"
- * (bouton rond 22px, pour un usage isolé).
- */
 export default function InfoBulle({ texte, taille = "petite", position = "bas" }) {
   const [ouvert, setOuvert] = useState(false);
-  const ref = useRef(null);
+  const [coords, setCoords] = useState(null);
+  const boutonRef = useRef(null);
+  const bulleRef = useRef(null);
   const id = useId();
+
+  const calculerPosition = () => {
+    const bouton = boutonRef.current;
+    if (!bouton) return;
+    const rect = bouton.getBoundingClientRect();
+    const largeurBulle = 224;
+    let left = rect.left + rect.width / 2 - largeurBulle / 2;
+    left = Math.max(8, Math.min(left, window.innerWidth - largeurBulle - 8));
+
+    if (position === "droite") {
+      setCoords({ top: rect.top + rect.height / 2, left: rect.right + 6, transform: "translateY(-50%)" });
+    } else if (position === "haut") {
+      setCoords({ top: rect.top - 6, left, transform: "translateY(-100%)" });
+    } else {
+      setCoords({ top: rect.bottom + 6, left, transform: "none" });
+    }
+  };
+
+  useLayoutEffect(() => {
+    if (ouvert) calculerPosition();
+  }, [ouvert]);
 
   useEffect(() => {
     if (!ouvert) return;
     const fermerSiExterieur = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) setOuvert(false);
+      if (
+        boutonRef.current && !boutonRef.current.contains(e.target) &&
+        bulleRef.current && !bulleRef.current.contains(e.target)
+      ) {
+        setOuvert(false);
+      }
     };
     const fermerSiEchap = (e) => {
       if (e.key === "Escape") setOuvert(false);
     };
+    const repositionner = () => calculerPosition();
+
     document.addEventListener("mousedown", fermerSiExterieur);
     document.addEventListener("touchstart", fermerSiExterieur);
     document.addEventListener("keydown", fermerSiEchap);
+    window.addEventListener("scroll", repositionner, true);
+    window.addEventListener("resize", repositionner);
     return () => {
       document.removeEventListener("mousedown", fermerSiExterieur);
       document.removeEventListener("touchstart", fermerSiExterieur);
       document.removeEventListener("keydown", fermerSiEchap);
+      window.removeEventListener("scroll", repositionner, true);
+      window.removeEventListener("resize", repositionner);
     };
   }, [ouvert]);
 
   const tailleBouton = taille === "petite" ? "h-4 w-4" : "h-[22px] w-[22px]";
-  const positionClasses =
-    position === "haut"
-      ? "bottom-full mb-1.5"
-      : position === "droite"
-      ? "left-full ml-1.5 top-1/2 -translate-y-1/2"
-      : "top-full mt-1.5";
 
   return (
-    <span className="relative inline-flex" ref={ref}>
+    <span className="relative inline-flex">
       <button
+        ref={boutonRef}
         type="button"
         aria-expanded={ouvert}
         aria-describedby={ouvert ? id : undefined}
@@ -57,16 +78,19 @@ export default function InfoBulle({ texte, taille = "petite", position = "bas" }
         )}
       </button>
 
-      {ouvert && (
-        <span
-          id={id}
-          role="tooltip"
-          className={`absolute z-[2000] w-56 rounded-xl border border-sable-200 bg-white p-3 font-body text-xs leading-relaxed text-encre-800 shadow-panel ${positionClasses}`}
-          style={{ left: position === "droite" ? undefined : "50%", transform: position === "droite" ? undefined : "translateX(-50%)" }}
-        >
-          {texte}
-        </span>
-      )}
+      {ouvert && coords &&
+        createPortal(
+          <span
+            ref={bulleRef}
+            id={id}
+            role="tooltip"
+            className="fixed z-[3000] w-56 rounded-xl border border-sable-200 bg-white p-3 font-body text-xs leading-relaxed text-encre-800 shadow-panel"
+            style={{ top: coords.top, left: coords.left, transform: coords.transform }}
+          >
+            {texte}
+          </span>,
+          document.body
+        )}
     </span>
   );
 }
