@@ -18,10 +18,12 @@ const SEUILS_SNAP = { peek: 30, mi: 72 };
 function useBottomSheetDrag(etatInitial = "mi") {
   const [etat, setEtat] = useState(etatInitial);
   const [hauteurEnCours, setHauteurEnCours] = useState(null);
+  const [enTransition, setEnTransition] = useState(false);
   const drag = useRef(null);
 
   const onPointerDown = useCallback(
     (e) => {
+      setEnTransition(false);
       drag.current = { startY: e.clientY, startHauteur: HAUTEURS_ETATS[etat] };
       e.target.setPointerCapture?.(e.pointerId);
     },
@@ -48,13 +50,19 @@ function useBottomSheetDrag(etatInitial = "mi") {
         : hauteurEnCours < 78
         ? "mi"
         : "plein";
+    setEnTransition(true);
     setEtat(finale);
     setHauteurEnCours(null);
     drag.current = null;
   }, [hauteurEnCours]);
 
+  const changerEtat = useCallback((nouvelEtat) => {
+    setEnTransition(true);
+    setEtat(nouvelEtat);
+  }, []);
+
   const hauteurActuelle = hauteurEnCours ?? HAUTEURS_ETATS[etat];
-  return { etat, setEtat, hauteurActuelle, onPointerDown, onPointerMove, onPointerUp };
+  return { etat, setEtat: changerEtat, hauteurActuelle, enTransition, onPointerDown, onPointerMove, onPointerUp };
 }
 
 export default function PanneauDetail({ variant = "flottant-desktop" }) {
@@ -64,6 +72,14 @@ export default function PanneauDetail({ variant = "flottant-desktop" }) {
   const tousLesEtablissements = useEtablissementsStore((s) => s.etablissements);
 
   const sheet = useBottomSheetDrag("mi");
+
+  const dernierCodeUai = useRef(null);
+  useEffect(() => {
+    if (etablissement && etablissement.code_uai !== dernierCodeUai.current) {
+      dernierCodeUai.current = etablissement.code_uai;
+      sheet.setEtat("mi");
+    }
+  }, [etablissement, sheet]);
 
   const contenuRef = useRef(null);
   const [peutScroller, setPeutScroller] = useState(false);
@@ -139,7 +155,8 @@ export default function PanneauDetail({ variant = "flottant-desktop" }) {
       )}
 
       <aside
-        className="fixed inset-x-0 bottom-0 z-[1500] flex flex-col overflow-hidden rounded-t-3xl bg-sable-50 shadow-panel transition-[height] duration-150"
+        className={`fixed inset-x-0 bottom-0 z-[1500] flex flex-col overflow-hidden rounded-t-3xl bg-sable-50 shadow-panel
+                    ${sheet.enTransition ? "transition-[height] duration-300 ease-[cubic-bezier(0.34,1.4,0.64,1)]" : ""}`}
         style={{ height: `${hauteur}dvh` }}
       >
         <div
@@ -156,14 +173,14 @@ export default function PanneauDetail({ variant = "flottant-desktop" }) {
           <div className="h-1.5 w-12 rounded-full bg-sable-300 transition-colors group-active:bg-encre-600" />
           <div className="flex gap-1">
             <button
-              onClick={() => sheet.setEtat(sheet.etat === "peek" ? "mi" : sheet.etat === "mi" ? "plein" : "plein")}
+              onClick={() => sheet.setEtat(sheet.etat === "peek" ? "mi" : "plein")}
               className="rounded-full p-0.5 text-encre-400 hover:text-encre-600"
               aria-label="Agrandir le panneau"
             >
               <ChevronUp size={14} />
             </button>
             <button
-              onClick={() => sheet.setEtat(sheet.etat === "plein" ? "mi" : sheet.etat === "mi" ? "peek" : "peek")}
+              onClick={() => sheet.setEtat(sheet.etat === "plein" ? "mi" : "peek")}
               className="rounded-full p-0.5 text-encre-400 hover:text-encre-600"
               aria-label="Réduire le panneau"
             >
