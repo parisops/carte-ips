@@ -10,16 +10,14 @@ import GaugeIPS from "./GaugeIPS";
 import DonutParite from "./DonutParite";
 import EffectifsParNiveau from "./EffectifsParNiveau";
 import ResultatsScolaires from "./ResultatsScolaires";
+import InfoBulle from "./InfoBulle";
 
-// Hauteurs des 3 états du bottom sheet mobile, en % de la hauteur d'écran
-// (dvh pour respecter les barres d'adresse mobiles qui apparaissent/disparaissent).
-// "peek" : nom + IPS visibles, la carte reste consultable en arrière-plan.
 const HAUTEURS_ETATS = { peek: 16, mi: 52, plein: 92 };
-const SEUILS_SNAP = { peek: 30, mi: 72 }; // % en dessous duquel on snap vers l'état précédent
+const SEUILS_SNAP = { peek: 30, mi: 72 };
 
 function useBottomSheetDrag(etatInitial = "mi") {
   const [etat, setEtat] = useState(etatInitial);
-  const [hauteurEnCours, setHauteurEnCours] = useState(null); // % pendant le drag
+  const [hauteurEnCours, setHauteurEnCours] = useState(null);
   const drag = useRef(null);
 
   const onPointerDown = useCallback(
@@ -97,8 +95,6 @@ export default function PanneauDetail({ variant = "flottant-desktop" }) {
     />
   );
 
-  // === DESKTOP : overlay flottant ancré à droite, ne redimensionne jamais
-  // le conteneur carte (position absolute, la carte occupe tout l'écran en dessous). ===
   if (variant === "flottant-desktop") {
     return (
       <aside
@@ -115,8 +111,6 @@ export default function PanneauDetail({ variant = "flottant-desktop" }) {
     );
   }
 
-  // === MOBILE : bottom sheet à 3 états (peek / mi-hauteur / plein écran),
-  // avec drag au doigt sur la poignée + boutons de secours pour cycler les états. ===
   const hauteur = sheet.hauteurActuelle;
 
   return (
@@ -129,7 +123,6 @@ export default function PanneauDetail({ variant = "flottant-desktop" }) {
         className="fixed inset-x-0 bottom-0 z-[1500] flex flex-col overflow-hidden rounded-t-3xl bg-sable-50 shadow-panel transition-[height] duration-150"
         style={{ height: `${hauteur}dvh` }}
       >
-        {/* Poignée de drag — zone tactile large (44px) pour cibler facilement au pouce */}
         <div
           className="flex shrink-0 cursor-grab flex-col items-center pb-1 pt-2 touch-none"
           onPointerDown={sheet.onPointerDown}
@@ -202,7 +195,12 @@ function EnTeteFiche({ etablissement, fratrie, onFermer, onSelectFratrie, compac
         <Badge tone={etablissement.statut === "Public" ? "tableau" : "neutre"}>
           {etablissement.statut}
         </Badge>
-        {etablissement.label_rep && <Badge tone="alerte">{etablissement.label_rep}</Badge>}
+        {etablissement.label_rep && (
+          <span className="inline-flex items-center gap-1">
+            <Badge tone="alerte">{etablissement.label_rep}</Badge>
+            <InfoBulle texte="REP (Réseau d'Éducation Prioritaire) et REP+ désignent les établissements accueillant les publics les plus éloignés de la réussite scolaire, bénéficiant de moyens renforcés. REP+ concerne les situations les plus difficiles." />
+          </span>
+        )}
         {compact && etablissement.ips_etablissement != null && (
           <span className="font-mono text-sm font-semibold text-encre-950">
             IPS {etablissement.ips_etablissement}
@@ -285,12 +283,7 @@ function ContenuFiche({ etablissement, parite, dataFilieres }) {
         <section>
           <h3 className="mb-2 flex items-center gap-1.5 font-body text-xs font-semibold uppercase tracking-wide text-encre-400">
             Mixité sociale — IPS
-            <span
-              title="L'Indice de Position Sociale (IPS) mesure le profil social et scolaire moyen des élèves d'un établissement, sur une échelle d'environ 50 à 170. Un IPS élevé indique un profil d'élèves globalement plus favorisé."
-              className="cursor-help rounded-full bg-sable-200 px-1.5 font-mono text-[10px] font-bold text-encre-600"
-            >
-              ?
-            </span>
+            <InfoBulle texte="L'Indice de Position Sociale (IPS) mesure le profil social et scolaire moyen des élèves d'un établissement, sur une échelle d'environ 50 à 170. Un IPS élevé indique un profil d'élèves globalement plus favorisé." />
           </h3>
           <p className="mb-2 font-mono text-2xl font-semibold text-encre-950">
             {etablissement.ips_etablissement}

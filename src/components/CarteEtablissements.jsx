@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { MapContainer, TileLayer, Marker, Tooltip, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Tooltip, useMap, useMapEvents } from "react-leaflet";
 import MarkerClusterGroup from "react-leaflet-cluster";
 import L from "leaflet";
 import {
@@ -12,14 +12,8 @@ import { couleurDegradeIPS, tailleDepuisEffectif, CLIP_PATH_PAR_FORME, FORME_PAR
 const CENTRE_IDF = [48.8499, 2.6377];
 const ZOOM_IDF = 9;
 const SEUIL_MOBILE_PX = 768;
+const SEUIL_ZOOM_ECLATEMENT = 10;
 
-/**
- * Icône DivIcon : couleur = IPS (moyen si plusieurs établissements au même
- * site), taille = effectif total du site, FORME = type d'établissement
- * (rond=école, carré=collège, hexagone=lycée ; losange si le site mélange
- * plusieurs types). Un site multi-établissements porte en plus un badge avec
- * le nombre d'établissements regroupés.
- */
 function creerIcone(site, estSelectionne, effectifMin, effectifMax) {
   const multi = site.membres.length > 1;
   const typesPresents = new Set(site.membres.map((m) => m.type_etablissement));
@@ -61,13 +55,6 @@ function creerIcone(site, estSelectionne, effectifMin, effectifMax) {
   });
 }
 
-/**
- * Icône de cluster : anneau CREUX (pas un disque plein) + compteur, couleur =
- * IPS moyen du groupe. Volontairement différent des 4 formes individuelles
- * (rond plein/carré/hexagone/losange) : un rond plein d'école bien dé-clusterisé
- * était visuellement indiscernable d'un cluster tant qu'on n'avait pas assez
- * zoomé, ce qui donnait l'impression que "la forme école ne marche pas".
- */
 function creerIconeCluster(cluster) {
   const count = cluster.getChildCount();
   const taille = count < 10 ? 42 : count < 50 ? 50 : 60;
@@ -96,13 +83,6 @@ function creerIconeCluster(cluster) {
   });
 }
 
-/**
- * Icône bulle de département : vue "d'ensemble" par défaut, une bulle par
- * département avec le nombre d'établissements et une couleur = IPS moyen du
- * département. Bien plus lisible au premier coup d'œil que ~7600 points
- * individuels, et évite le besoin d'un cadrage très dézoomé sur toute la
- * région pour rester lisible.
- */
 function creerIconeDepartement(dept, estMobile) {
   const taille = estMobile ? 72 : 84;
   const couleur = couleurDegradeIPS(dept.ipsMoyen);
@@ -123,7 +103,6 @@ function creerIconeDepartement(dept, estMobile) {
   });
 }
 
-/** Recentre la carte quand la sélection change, sans jamais dézoomer. */
 function RecentrerSurSelection({ etablissement }) {
   const map = useMap();
   useEffect(() => {
@@ -134,12 +113,6 @@ function RecentrerSurSelection({ etablissement }) {
   return null;
 }
 
-/**
- * Cadrage initial UNIQUE au montage (pas d'animation en deux temps) : évite
- * l'effet "trop dézoomé" ressenti avec l'ancien cadrage qui démarrait
- * volontairement dézoomé avant d'animer vers la vue finale. Ici on fitBounds
- * directement sur l'étendue réelle des données, une seule fois.
- */
 function CadrageInitial({ bounds }) {
   const map = useMap();
   const [fait, setFait] = useState(false);
@@ -151,14 +124,6 @@ function CadrageInitial({ bounds }) {
   return null;
 }
 
-/**
- * Recentre la carte quand le filtre département change — que ce changement
- * vienne d'un clic sur une bulle département (vue d'ensemble) ou du <select>
- * du panneau de filtres (même state partagé, cf. useEtablissementsStore) :
- * les deux déclenchent exactement le même comportement de zoom.
- * Le premier rendu est ignoré : c'est `CadrageInitial` qui gère le cadrage
- * au montage, pour éviter un double mouvement de carte à l'ouverture.
- */
 function RecentrageSurDepartement({ departement, sitesDuDepartement }) {
   const map = useMap();
   const premierRendu = useRef(true);
@@ -185,6 +150,17 @@ function RecentrageSurDepartement({ departement, sitesDuDepartement }) {
   return null;
 }
 
+function SuiviZoom({ onZoomChange }) {
+  const map = useMap();
+  useEffect(() => {
+    onZoomChange(map.getZoom());
+  }, [map, onZoomChange]);
+  useMapEvents({
+    zoomend: (e) => onZoomChange(e.target.getZoom()),
+  });
+  return null;
+}
+
 export default function CarteEtablissements() {
   const etablissements = useEtablissementsFiltres();
   const selectionnerEtablissement = useEtablissementsStore((s) => s.selectionnerEtablissement);
@@ -193,8 +169,8 @@ export default function CarteEtablissements() {
   const filtres = useEtablissementsStore((s) => s.filtres);
   const setFiltre = useEtablissementsStore((s) => s.setFiltre);
 
-  // Rayon de clustering adaptatif : sur mobile, un rayon plus large réduit le
-  // nombre de petits clusters proches des bords de l'écran en petit format.
+  const [zoomActuel, setZoomActuel] = useState(ZOOM_IDF);
+
   const [estMobile, setEstMobile] = useState(
     typeof window !== "undefined" && window.innerWidth < SEUIL_MOBILE_PX
   );
@@ -218,9 +194,6 @@ export default function CarteEtablissements() {
     });
   }, [etablissements]);
 
-  // Bulles de département : vue "d'ensemble" par défaut (filtre = "Tous"),
-  // une bulle par département avec position moyenne, IPS moyen pondéré et
-  // nombre total d'établissements.
   const sitesParDepartement = useMemo(() => {
     const groupes = new Map();
     for (const site of sites) {
@@ -255,11 +228,7 @@ export default function CarteEtablissements() {
 
   const etablissementSelectionne = etablissements.find((e) => e.code_uai === selectionId) ?? null;
 
-  // Vue "d'ensemble" (bulles département) tant qu'aucun département n'est
-  // choisi ; vue "détail" (marqueurs individuels + clustering habituel) dès
-  // qu'un département est sélectionné, via une bulle OU le <select> du
-  // panneau de filtres — les deux partagent le même state.
-  const vueEnsemble = filtres.departement === "Tous";
+  const vueEnsemble = filtres.departement === "Tous" && zoomActuel < SEUIL_ZOOM_ECLATEMENT;
 
   return (
     <div className="relative h-full w-full overflow-hidden rounded-none md:rounded-2xl md:shadow-panel">
@@ -365,14 +334,9 @@ export default function CarteEtablissements() {
           sitesDuDepartement={sitesDuDepartementFiltre}
         />
         <RecentrerSurSelection etablissement={etablissementSelectionne} />
+        <SuiviZoom onZoomChange={setZoomActuel} />
       </MapContainer>
 
-      {/*
-        Vignette de fondu sur les bords de la carte : un marqueur/cluster
-        proche du bord s'estompe progressivement au lieu d'être tranché net.
-        pointer-events désactivés pour ne jamais bloquer les interactions
-        avec la carte en dessous.
-      */}
       <div className="pointer-events-none absolute inset-0 z-[900]">
         <div className="absolute inset-x-0 top-0 h-7 bg-gradient-to-b from-sable-100/70 to-transparent" />
         <div className="absolute inset-x-0 bottom-0 h-7 bg-gradient-to-t from-sable-100/70 to-transparent" />

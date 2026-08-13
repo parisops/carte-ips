@@ -9,6 +9,7 @@ import {
   CLIP_PATH_PAR_FORME,
   FORME_PAR_TYPE,
 } from "../utils/ipsColor";
+import InfoBulle from "./InfoBulle";
 
 function CaseAFilter({ label, checked, onChange, couleur, forme }) {
   return (
@@ -33,12 +34,6 @@ function CaseAFilter({ label, checked, onChange, couleur, forme }) {
   );
 }
 
-/**
- * Slider avec poignée agrandie (44px min, norme cible tactile) — remplace le
- * <input type="range"> natif trop fin pour une manipulation précise au doigt.
- * Le filtrage global (recalcul de ~8000 marqueurs) ne se déclenche qu'au
- * relâchement, pas à chaque pixel glissé.
- */
 function SliderSimple({ label, min, max, value, onChangeCommit }) {
   const [local, setLocal] = useState(value);
   useEffect(() => setLocal(value), [value]);
@@ -109,7 +104,8 @@ function LegendeCarte({ collapsibleParDefaut = false }) {
                 className="inline-block h-2.5 w-2.5 rounded-full"
                 style={{ background: COULEUR_IPS_INCONNU }}
               />
-              IPS non publié — voir <span className="italic">pourquoi ?</span>
+              IPS non publié
+              <InfoBulle texte="Le ministère ne diffuse pas l'IPS pour les établissements en dessous d'un certain effectif, afin de préserver l'anonymat des élèves. C'est le cas d'environ 44% des écoles primaires." />
             </div>
           </div>
 
@@ -213,8 +209,6 @@ function ContenuFiltres({ onFermer }) {
           ))}
         </fieldset>
 
-        {/* Ajout : filtre département, déjà présent dans identite.json mais
-            pas encore exposé (repère depuis README.md "Aller plus loin"). */}
         <fieldset className="space-y-1.5">
           <legend className="mb-1 font-body text-xs font-semibold uppercase tracking-wide text-encre-400">
             Département
@@ -234,7 +228,7 @@ function ContenuFiltres({ onFermer }) {
         </fieldset>
 
         <fieldset className="space-y-1">
-          <legend className="mb-1 font-body text-xs font-semibold uppercase tracking-wide text-encre-400">
+          <legend className="mb-1 flex items-center gap-1.5 font-body text-xs font-semibold uppercase tracking-wide text-encre-400">
             Dispositifs
           </legend>
           <CaseAFilter
@@ -247,16 +241,20 @@ function ContenuFiltres({ onFermer }) {
             checked={filtres.dispositifs.segpa}
             onChange={(v) => setFiltre("dispositifs.segpa", v)}
           />
-          <CaseAFilter
-            label="Éducation prioritaire (REP/REP+)"
-            checked={filtres.dispositifs.rep}
-            onChange={(v) => setFiltre("dispositifs.rep", v)}
-          />
+          <span className="flex items-center gap-1.5">
+            <CaseAFilter
+              label="Éducation prioritaire (REP/REP+)"
+              checked={filtres.dispositifs.rep}
+              onChange={(v) => setFiltre("dispositifs.rep", v)}
+            />
+            <InfoBulle texte="REP et REP+ désignent les établissements du réseau d'éducation prioritaire, qui bénéficient de moyens renforcés pour accompagner les publics les plus éloignés de la réussite scolaire." />
+          </span>
         </fieldset>
 
         <div className="space-y-1.5">
-          <p className="font-body text-xs font-semibold uppercase tracking-wide text-encre-400">
+          <p className="flex items-center gap-1.5 font-body text-xs font-semibold uppercase tracking-wide text-encre-400">
             Score IPS minimum
+            <InfoBulle texte="Déplacez le curseur pour n'afficher que les établissements dont l'IPS est supérieur ou égal à la valeur choisie." position="droite" />
           </p>
           <SliderSimple
             label="À partir de"
@@ -289,16 +287,6 @@ function ContenuFiltres({ onFermer }) {
   );
 }
 
-/**
- * FiltresPanel — deux variantes de présentation, même logique de filtre :
- *
- * - "flottant-desktop" : widget flottant en haut-gauche de la carte,
- *   collapsible en une icône ronde. Ne redimensionne JAMAIS le conteneur
- *   carte (position absolute, pas de flex-basis).
- * - "feuille-mobile" : bottom sheet plein écran dédié, ouvert uniquement à
- *   la demande (bouton dans la barre de chips). Se ferme automatiquement
- *   dès qu'un marqueur est cliqué (géré depuis App.jsx via fermerPanneau).
- */
 export default function FiltresPanel({ variant, ouvert, onToggle, onFermer }) {
   if (variant === "flottant-desktop") {
     return (
@@ -329,7 +317,6 @@ export default function FiltresPanel({ variant, ouvert, onToggle, onFermer }) {
     );
   }
 
-  // feuille-mobile
   if (!ouvert) return null;
   return (
     <>
