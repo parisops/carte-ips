@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MapContainer, TileLayer, Marker, Tooltip, useMap, useMapEvents } from "react-leaflet";
 import MarkerClusterGroup from "react-leaflet-cluster";
 import L from "leaflet";
@@ -13,6 +13,11 @@ const CENTRE_IDF = [48.8499, 2.6377];
 const ZOOM_IDF = 9;
 const SEUIL_MOBILE_PX = 768;
 const SEUIL_ZOOM_ECLATEMENT = 10;
+const SEUIL_DECLUSTERING = 14;
+const SEUIL_ZOOM_MARGE_RESSERREE = 12;
+const MARGE_LARGE = 0.4;
+const MARGE_RESSERREE = 0.25;
+const DEBOUNCE_VIEWPORT_MS = 100;
 
 function creerIcone(site, estSelectionne, effectifMin, effectifMax) {
   const multi = site.membres.length > 1;
@@ -161,6 +166,42 @@ function SuiviZoom({ onZoomChange }) {
   return null;
 }
 
+function SuiviViewport({ onViewportChange, marge }) {
+  const map = useMap();
+  const timerRef = useRef(null);
+  const margeRef = useRef(marge);
+  margeRef.current = marge;
+
+  const calculerEtEmettre = useCallback(() => {
+    const bounds = map.getBounds();
+    const paddedBounds = bounds.pad(margeRef.current);
+    onViewportChange(paddedBounds);
+  }, [map, onViewportChange]);
+
+  useEffect(() => {
+    calculerEtEmettre();
+  }, [calculerEtEmettre, marge]);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
+
+  useMapEvents({
+    moveend: () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(calculerEtEmettre, DEBOUNCE_VIEWPORT_MS);
+    },
+    zoomend: () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(calculerEtEmettre, DEBOUNCE_VIEWPORT_MS);
+    },
+  });
+
+  return null;
+}
+
 export default function CarteEtablissements() {
   const etablissements = useEtablissementsFiltres();
   const selectionnerEtablissement = useEtablissementsStore((s) => s.selectionnerEtablissement);
@@ -170,6 +211,7 @@ export default function CarteEtablissements() {
   const setFiltre = useEtablissementsStore((s) => s.setFiltre);
 
   const [zoomActuel, setZoomActuel] = useState(ZOOM_IDF);
+  const [viewportBounds, setViewportBounds] = useState(null);
 
   const [estMobile, setEstMobile] = useState(
     typeof window !== "undefined" && window.innerWidth < SEUIL_MOBILE_PX
@@ -179,7 +221,10 @@ export default function CarteEtablissements() {
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, []);
-  const rayonCluster = estMobile ? 26 : 14;
+
+  const rayonCluster = estMobile ? 44 : 32;
+
+  const margeViewport = zoomActuel >= SEUIL_ZOOM_MARGE_RESSERREE ? MARGE_RESSERREE : MARGE_LARGE;
 
   const sites = useMemo(() => {
     return regrouperParSite(etablissements).map((site) => {
@@ -230,6 +275,18 @@ export default function CarteEtablissements() {
 
   const vueEnsemble = filtres.departement === "Tous" && zoomActuel < SEUIL_ZOOM_ECLATEMENT;
 
+  const sitesVisibles = useMemo(() => {
+    if (vueEnsemble || !viewportBounds) return sites;
+    return sites.filter((site) => {
+      if (site.membres.some((m) => m.code_uai === selectionId)) return true;
+      return viewportBounds.contains([site.latitude, site.longitude]);
+    });
+  }, [sites, viewportBounds, vueEnsemble, selectionId]);
+
+  const handleViewportChange = useCallback((bounds) => {
+    setViewportBounds(bounds);
+  }, []);
+
   return (
     <div className="relative h-full w-full overflow-hidden rounded-none md:rounded-2xl md:shadow-panel">
       <MapContainer
@@ -237,12 +294,6 @@ export default function CarteEtablissements() {
         zoom={ZOOM_IDF}
         className="h-full w-full"
         zoomControl={false}
-        // AJOUT PERF — preferCanvas=true : Leaflet rend les marqueurs sur un
-        // <canvas> unique plutôt qu'en éléments DOM/SVG individuels. Avec
-        // ~7600 sites potentiels, cela réduit fortement le nombre de nœuds
-        // DOM créés et accélère le rendu initial ainsi que les recalculs au
-        // zoom/pan — gain particulièrement sensible sur mobile bas de gamme.
-        preferCanvas={true}
       >
         <TileLayer
           url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
@@ -273,12 +324,15 @@ export default function CarteEtablissements() {
         ) : (
           <MarkerClusterGroup
             chunkedLoading
+            chunkInterval={100}
+            chunkDelay={25}
             iconCreateFunction={creerIconeCluster}
             maxClusterRadius={rayonCluster}
-            disableClusteringAtZoom={12}
+            disableClusteringAtZoom={SEUIL_DECLUSTERING}
             spiderfyOnMaxZoom
+            removeOutsideVisibleBounds
           >
-            {sites.map((site) => {
+            {sitesVisibles.map((site) => {
               const estSiteSelectionne = site.membres.some((m) => m.code_uai === selectionId);
               const principal = site.membres.find((m) => m.code_uai === selectionId) ?? site.membres[0];
               return (
@@ -341,6 +395,9 @@ export default function CarteEtablissements() {
         />
         <RecentrerSurSelection etablissement={etablissementSelectionne} />
         <SuiviZoom onZoomChange={setZoomActuel} />
+        {!vueEnsemble && (
+          <SuiviViewport onViewportChange={handleViewportChange} marge={margeViewport} />
+        )}
       </MapContainer>
 
       <div className="pointer-events-none absolute inset-0 z-[900]">
