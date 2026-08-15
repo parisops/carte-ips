@@ -1,4 +1,5 @@
 import EffectifsParNiveau from "./EffectifsParNiveau";
+import InfoBulle from "./InfoBulle";
 
 /** Même convention visuelle que les écarts IPS de GaugeIPS.jsx : vert si positif,
  * corail si négatif, gris si nul/inconnu — pour rester cohérent dans toute la fiche. */
@@ -34,6 +35,29 @@ function LigneIndicateur({ label, valeur, va, unite = "%" }) {
   );
 }
 
+// Libellé + info-bulle spécifiques selon le type d'établissement : IVAC pour
+// les collèges, IVAL pour les lycées. Un intitulé générique "Résultats
+// scolaires" masquait cette distinction officielle, pourtant utile pour
+// savoir à quel indicateur ministériel on se réfère (et le retrouver via ses
+// propres recherches).
+const INFOS_PAR_TYPE = {
+  Collège: {
+    titre: "Valeur ajoutée du collège (IVAC)",
+    texte:
+      "L'IVAC compare les résultats réellement observés au brevet à ceux qu'on attendrait d'un collège accueillant un profil d'élèves comparable (même niveau d'entrée en 6e). Positif = l'établissement fait mieux que prévu compte tenu de son public. Non calculé si les données d'entrée en 6e manquent pour plus de 25% des élèves.",
+  },
+  Lycée: {
+    titre: "Valeur ajoutée du lycée (IVAL)",
+    texte:
+      "L'IVAL applique la même logique que l'IVAC au taux de réussite, taux de mentions et taux d'accès au bac : l'écart entre résultats observés et résultats attendus pour un profil d'élèves comparable. Diffusé seulement au-delà d'un seuil de candidats (20 en général/techno, 10 en professionnel).",
+  },
+};
+const INFO_DEFAUT = {
+  titre: "Résultats scolaires",
+  texte:
+    "Écart entre les résultats observés et ceux attendus pour un établissement accueillant un profil d'élèves comparable. Positif = fait mieux que prévu compte tenu de son public.",
+};
+
 /**
  * Résultats scolaires officiels (IVAC pour les collèges, IVAL pour les lycées) :
  * taux bruts + valeur ajoutée (VA) — l'écart à ce qu'on attendrait d'un
@@ -45,7 +69,7 @@ function LigneIndicateur({ label, valeur, va, unite = "%" }) {
  * N'existe pas pour les écoles (pas d'examen en primaire) : le composant
  * retourne simplement `null` dans ce cas, cohérent avec le reste de la fiche.
  */
-export default function ResultatsScolaires({ resultats }) {
+export default function ResultatsScolaires({ resultats, typeEtablissement }) {
   if (!resultats) return null;
 
   const {
@@ -65,10 +89,13 @@ export default function ResultatsScolaires({ resultats }) {
 
   if (taux_reussite == null && !aAcces) return null;
 
+  const info = INFOS_PAR_TYPE[typeEtablissement] ?? INFO_DEFAUT;
+
   return (
     <section>
-      <h3 className="mb-2 font-body text-xs font-semibold uppercase tracking-wide text-encre-400">
-        Résultats scolaires
+      <h3 className="mb-2 flex items-center gap-1.5 font-body text-xs font-semibold uppercase tracking-wide text-encre-400">
+        {info.titre}
+        <InfoBulle texte={info.texte} />
       </h3>
 
       <div className="space-y-1.5 rounded-xl bg-sable-100 p-3">
@@ -83,8 +110,12 @@ export default function ResultatsScolaires({ resultats }) {
       <p className="mt-1.5 font-body text-[11px] leading-relaxed text-encre-400">
         VA = valeur ajoutée : écart à la réussite attendue d'un établissement
         accueillant un public comparable. Positif = fait mieux que prévu.
-        {resultats_millesime && <> Données de la session {resultats_millesime}.</>}
       </p>
+      {resultats_millesime && (
+        <p className="mt-1 font-body text-[11px] text-encre-400">
+          Source : DEPP (Ministère de l'Éducation nationale), session {resultats_millesime}
+        </p>
+      )}
 
       {aMentionsDetail && (
         <div className="mt-4">
