@@ -13,6 +13,11 @@ const CENTRE_IDF = [48.8499, 2.6377];
 const ZOOM_IDF = 9;
 const SEUIL_MOBILE_PX = 768;
 const SEUIL_ZOOM_ECLATEMENT = 10;
+// PERF — reporté de 12 à 14 : au zoom 12, une zone dense (Paris intra-muros)
+// pouvait encore "spiderfier" plusieurs centaines de marqueurs individuels
+// d'un coup. Retarder ce seuil laisse le clustering absorber davantage de
+// densité avant de matérialiser tous les Marker/DivIcon individuels.
+const SEUIL_DECLUSTERING = 14;
 
 function creerIcone(site, estSelectionne, effectifMin, effectifMax) {
   const multi = site.membres.length > 1;
@@ -179,7 +184,13 @@ export default function CarteEtablissements() {
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, []);
-  const rayonCluster = estMobile ? 26 : 14;
+
+  // PERF — rayon de clustering légèrement plus large que précédemment
+  // (32px desktop / 44px mobile au lieu de 14px / 26px) : regroupe plus
+  // agressivement les marqueurs proches, donc moins de clusters ET moins
+  // de marqueurs individuels visibles à un niveau de zoom donné, avant
+  // même d'atteindre SEUIL_DECLUSTERING.
+  const rayonCluster = estMobile ? 44 : 32;
 
   const sites = useMemo(() => {
     return regrouperParSite(etablissements).map((site) => {
@@ -237,12 +248,10 @@ export default function CarteEtablissements() {
         zoom={ZOOM_IDF}
         className="h-full w-full"
         zoomControl={false}
-        // AJOUT PERF — preferCanvas=true : Leaflet rend les marqueurs sur un
-        // <canvas> unique plutôt qu'en éléments DOM/SVG individuels. Avec
-        // ~7600 sites potentiels, cela réduit fortement le nombre de nœuds
-        // DOM créés et accélère le rendu initial ainsi que les recalculs au
-        // zoom/pan — gain particulièrement sensible sur mobile bas de gamme.
-        preferCanvas={true}
+        // PERF — preferCanvas retiré : cette option n'affecte que les Path
+        // Leaflet (polygones, lignes, CircleMarker) et n'a aucun effet sur
+        // les Marker + DivIcon utilisés partout dans ce composant. Elle
+        // n'apportait donc aucun gain réel, seulement une complexité inutile.
       >
         <TileLayer
           url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
@@ -273,10 +282,16 @@ export default function CarteEtablissements() {
         ) : (
           <MarkerClusterGroup
             chunkedLoading
+            // PERF — étale le montage des marqueurs sur plusieurs frames
+            // (au lieu d'un bloc unique) pour ne jamais geler le thread
+            // principal lors d'un dézoom rapide sur une zone dense.
+            chunkInterval={100}
+            chunkDelay={25}
             iconCreateFunction={creerIconeCluster}
             maxClusterRadius={rayonCluster}
-            disableClusteringAtZoom={12}
+            disableClusteringAtZoom={SEUIL_DECLUSTERING}
             spiderfyOnMaxZoom
+            removeOutsideVisibleBounds
           >
             {sites.map((site) => {
               const estSiteSelectionne = site.membres.some((m) => m.code_uai === selectionId);
