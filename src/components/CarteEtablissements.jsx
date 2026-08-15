@@ -237,6 +237,12 @@ export default function CarteEtablissements() {
         zoom={ZOOM_IDF}
         className="h-full w-full"
         zoomControl={false}
+        // AJOUT PERF — preferCanvas=true : Leaflet rend les marqueurs sur un
+        // <canvas> unique plutôt qu'en éléments DOM/SVG individuels. Avec
+        // ~7600 sites potentiels, cela réduit fortement le nombre de nœuds
+        // DOM créés et accélère le rendu initial ainsi que les recalculs au
+        // zoom/pan — gain particulièrement sensible sur mobile bas de gamme.
+        preferCanvas={true}
       >
         <TileLayer
           url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"

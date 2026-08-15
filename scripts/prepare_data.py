@@ -110,6 +110,12 @@ def construire_identite():
         lat, lon = e.get("latitude"), e.get("longitude")
         if lat is None or lon is None:
             continue
+        # PERF — arrondi à 5 décimales (~1m de précision, largement suffisant
+        # pour un marqueur de carte) : les coordonnées brutes de la source
+        # embarquent souvent 10+ décimales inutiles, qui gonflent le JSON
+        # final sans aucun bénéfice visuel une fois affichées sur la carte.
+        lat = round(lat, 5)
+        lon = round(lon, 5)
         resultat.append({
             "code_uai": e["numero_uai"],
             "nom_etablissement": (e.get("appellation_officielle") or e.get("patronyme_uai") or "").strip(),
@@ -127,7 +133,7 @@ def construire_identite():
             # distincts, pas des doublons, mais ils se superposent
             # exactement sur la carte. `site_key` sert à les afficher comme
             # un seul marqueur groupé côté client (cf. utils/joinData.js).
-            "site_key": f"{round(lat, 5)}_{round(lon, 5)}",
+            "site_key": f"{lat}_{lon}",
         })
     return resultat
 
@@ -513,12 +519,17 @@ def main():
     indicateurs = construire_indicateurs(identite)
     resultats = construire_resultats()
 
+    # PERF — separators=(",", ":") supprime les espaces après virgules et
+    # deux-points par rapport aux séparateurs par défaut de json.dump
+    # (", " et ": "). Sur des dizaines de milliers d'entrées, ces espaces
+    # superflus représentent plusieurs centaines de Ko cumulés sans aucune
+    # utilité (le JSON n'est jamais lu à l'œil nu côté client).
     with open(OUT / "identite.json", "w", encoding="utf-8") as f:
-        json.dump(identite, f, ensure_ascii=False)
+        json.dump(identite, f, ensure_ascii=False, separators=(",", ":"))
     with open(OUT / "indicateurs.json", "w", encoding="utf-8") as f:
-        json.dump(indicateurs, f, ensure_ascii=False)
+        json.dump(indicateurs, f, ensure_ascii=False, separators=(",", ":"))
     with open(OUT / "resultats.json", "w", encoding="utf-8") as f:
-        json.dump(resultats, f, ensure_ascii=False)
+        json.dump(resultats, f, ensure_ascii=False, separators=(",", ":"))
 
     print(f"identite.json     : {len(identite)} établissements")
     print(f"indicateurs.json  : {len(indicateurs)} établissements")
