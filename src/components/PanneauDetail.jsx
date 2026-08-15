@@ -347,7 +347,7 @@ function ContenuFiche({ etablissement, parite, dataFilieres }) {
         <section>
           <h3 className="mb-2 flex items-center gap-1.5 font-body text-xs font-semibold uppercase tracking-wide text-encre-400">
             Mixité sociale — IPS
-            <InfoBulle texte="L'Indice de Position Sociale (IPS) mesure le profil social et scolaire moyen des élèves d'un établissement, sur une échelle d'environ 50 à 170. Un IPS élevé indique un profil d'élèves globalement plus favorisé." />
+            <InfoBulle texte="L'Indice de Position Sociale (IPS) résume le profil social et scolaire moyen des familles d'un établissement, à partir des professions des deux parents. Échelle continue d'environ 50 à 170. Il décrit le PUBLIC accueilli, pas la qualité de l'établissement — pour cela, voir la valeur ajoutée (IVAC/IVAL) ci-dessous." />
           </h3>
           <p className="mb-2 font-mono text-2xl font-semibold text-encre-950">
             {etablissement.ips_etablissement}
@@ -365,8 +365,12 @@ function ContenuFiche({ etablissement, parite, dataFilieres }) {
             </p>
           )}
           {etablissement.ips_millesime && (
-            <p className="mt-2 font-body text-[11px] text-encre-400">
-              Données de la rentrée {etablissement.ips_millesime}
+            <p className="mt-2 flex items-center gap-1 font-body text-[11px] text-encre-400">
+              Source : DEPP (Ministère de l'Éducation nationale), rentrée {etablissement.ips_millesime}
+              <InfoBulle
+                texte="Comparer deux établissements sur leur seul IPS compare des populations d'élèves, pas des performances. Un écart de quelques points ne doit pas être sur-interprété. Pour juger l'efficacité propre d'un établissement à profil équivalent, référez-vous plutôt à sa valeur ajoutée (IVAC/IVAL)."
+                position="haut"
+              />
             </p>
           )}
         </section>
@@ -382,7 +386,7 @@ function ContenuFiche({ etablissement, parite, dataFilieres }) {
         </section>
       )}
 
-      <ResultatsScolaires resultats={etablissement} />
+      <ResultatsScolaires resultats={etablissement} typeEtablissement={etablissement.type_etablissement} />
 
       {(etablissement.effectif_ulis > 0 || etablissement.effectif_segpa > 0) && (
         <section>
