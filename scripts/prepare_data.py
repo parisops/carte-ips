@@ -5,29 +5,33 @@ Ce script tourne UNE FOIS, en amont (build-time), pas côté client : les fichie
 sources bruts pèsent plusieurs dizaines de Mo cumulés — les envoyer tels quels au
 navigateur serait absurde. On les normalise ici vers le schéma métier de l'app.
 
-Sources attendues dans data-source/ (CSV bruts data.gouv.fr, plusieurs fichiers
-par famille couvrant des annees differentes -- voir HISTORIQUE_SOURCES) :
-  - fr-en-adresse-et-geolocalisation-etablissements-premier-et-second-degre.json
-    (identite : localisation, INCHANGE, une seule annee, source distincte)
-  - fr-en-ips-ecoles-*.csv, fr-en-ips-colleges-*.csv, fr-en-ips-lycees-*.csv,
-    fr-en-ips_colleges.csv, fr-en-ips_lycees.csv, fr-en-ips_ecoles_v2.csv
+Sources attendues dans data-source/ :
+  - fr-en-adresse-et-geolocalisation-etablissements-premier-et-second-degre.csv
+    (identite : localisation. CSV ';' officiel data.gouv.fr — UAI, nom, type,
+    secteur, adresse, coordonnees WGS84, etat de l'etablissement.)
+  - fr-en-ips-ecoles-ap2022.csv, fr-en-ips_ecoles_v2.csv
+  - fr-en-ips-colleges-ap2022.csv, fr-en-ips-colleges-ap2023.csv, fr-en-ips_colleges.csv
+  - fr-en-ips-lycees-ap2023.csv, fr-en-ips_lycees.csv
     (IPS multi-annees, empiles ici pour constituer un historique par UAI)
   - fr-en-indicateurs-valeur-ajoutee-colleges.csv (IVAC multi-annees)
   - fr-en-indicateurs-de-resultat-des-lycees-gt_v2.csv (IVAL GT multi-annees)
+  - fr-en-indicateurs-de-resultat-des-lycees-pro_v2.json (IVAL Pro)
+  - fr-en-ecoles-effectifs-nb_classes.json
+  - fr-en-college-effectifs-niveau-sexe-lv.json
+  - fr-en-lycee_gt-effectifs-niveau-sexe-lv.json
 
 La jointure `code_uai` reste la meme qu'avant :
-  - ce script fusionne les indicateurs (IPS + effectifs + historique, sources CSV)
+  - ce script fusionne les indicateurs (IPS + effectifs + historique)
   - l'app, elle, joint côté client ces indicateurs avec la localisation
     (`identite.json`), qui reste une source distincte (cf. `src/utils/joinData.js`).
 
-NOUVEAU dans cette version :
+Points cles de cette version :
   - `indicateurs.json` ne garde que la donnee la plus RECENTE par etablissement,
     et EXCLUT tout etablissement dont la derniere donnee IPS connue est
     anterieure a ANNEE_MIN_REFERENTIEL (etablissement considere ferme/obsolete).
-  - `historique_ips.json` (nouveau fichier, charge a la demande cote app --
-    PAS au demarrage de la carte) contient l'historique IPS complet par UAI,
-    au format compact {code_uai: [[annee, ips], ...]}, restreint aux UAI
-    retenus dans indicateurs.json (donc coherents avec identite.json).
+  - `historique_ips.json` (charge a la demande cote app, PAS au demarrage de la
+    carte) contient l'historique IPS complet par UAI, au format compact
+    {code_uai: [[annee, ips], ...]}, restreint aux UAI retenus dans identite.json.
 
 Sorties : public/data/identite.json, public/data/indicateurs.json,
           public/data/resultats.json, public/data/historique_ips.json
@@ -68,6 +72,7 @@ SOURCES_IPS_LYCEES = [
 SOURCE_IVAC_COLLEGES = "fr-en-indicateurs-valeur-ajoutee-colleges.csv"
 SOURCE_IVAL_LYCEES_GT = "fr-en-indicateurs-de-resultat-des-lycees-gt_v2.csv"
 SOURCE_IVAL_LYCEES_PRO = "fr-en-indicateurs-de-resultat-des-lycees-pro_v2.json"
+SOURCE_IDENTITE = "fr-en-adresse-et-geolocalisation-etablissements-premier-et-second-degre.csv"
 
 LANGUES_LABELS = {
     "allemand": "Allemand",
@@ -121,7 +126,7 @@ def to_int(v):
 
 
 # ---------------------------------------------------------------------------
-# UTILITAIRES CSV MULTI-ANNEES (nouveau)
+# UTILITAIRES CSV MULTI-ANNEES / GENERIQUES
 # ---------------------------------------------------------------------------
 
 _ENCODAGES = ["utf-8-sig", "utf-8", "latin-1", "cp1252"]
@@ -225,8 +230,16 @@ def dedupe_par_uai_annee(lignes):
     return list(meilleur.values())
 
 
+def _load_optionnel(nom):
+    chemin = SRC / nom
+    if not chemin.exists():
+        print(f"  (absent, ignore) {nom}")
+        return []
+    return load(nom)
+
+
 # ---------------------------------------------------------------------------
-# 1. IDENTITÉ — localisation, une ligne par établissement (INCHANGÉ)
+# 1. IDENTITÉ — localisation, une ligne par établissement (CSV data.gouv.fr)
 # ---------------------------------------------------------------------------
 
 def type_depuis_nature(libelle):
@@ -241,32 +254,71 @@ def type_depuis_nature(libelle):
 
 
 def construire_identite():
-    brut = load("fr-en-adresse-et-geolocalisation-etablissements-premier-et-second-degre.json")
+    chemin = SRC / SOURCE_IDENTITE
+    encodage, delimiteur = _detecter_encodage_delimiteur(chemin)
+
     resultat = []
-    for e in brut:
-        if e.get("etat_etablissement_libe") != "OUVERT":
-            continue
-        type_etab = type_depuis_nature(e.get("nature_uai_libe"))
-        if type_etab is None:
-            continue
-        lat, lon = e.get("latitude"), e.get("longitude")
-        if lat is None or lon is None:
-            continue
-        lat = round(lat, 5)
-        lon = round(lon, 5)
-        resultat.append({
-            "code_uai": e["numero_uai"],
-            "nom_etablissement": (e.get("appellation_officielle") or e.get("patronyme_uai") or "").strip(),
-            "type_etablissement": type_etab,
-            "statut": e.get("secteur_public_prive_libe"),
-            "adresse": e.get("adresse_uai"),
-            "commune": e.get("libelle_commune"),
-            "code_postal": e.get("code_postal_uai"),
-            "departement": e.get("libelle_departement"),
-            "latitude": lat,
-            "longitude": lon,
-            "site_key": f"{lat}_{lon}",
-        })
+    n_lues = 0
+    n_fermees = 0
+    n_type_inconnu = 0
+    n_sans_coord = 0
+
+    with open(chemin, "r", encoding=encodage, newline="") as f:
+        lecteur = csv.reader(f, delimiter=delimiteur)
+        entete = next(lecteur)
+        entete_norm = [_normaliser_colonne(h) for h in entete]
+
+        for brute in lecteur:
+            if len(brute) != len(entete_norm):
+                continue
+            n_lues += 1
+            e = dict(zip(entete_norm, brute))
+
+            if e.get("libelle_de_l_etat_de_l_etablissement") != "OUVERT":
+                n_fermees += 1
+                continue
+
+            type_etab = type_depuis_nature(e.get("libelle_de_la_nature_de_l_uai"))
+            if type_etab is None:
+                n_type_inconnu += 1
+                continue
+
+            lat_str = e.get("latitude_wgs84")
+            lon_str = e.get("longitude_wgs84")
+            if not lat_str or not lon_str:
+                n_sans_coord += 1
+                continue
+            try:
+                lat = round(float(lat_str), 5)
+                lon = round(float(lon_str), 5)
+            except ValueError:
+                n_sans_coord += 1
+                continue
+
+            nom = (e.get("appellation_officielle") or "").strip()
+            if not nom:
+                principale = (e.get("denomination_principale") or "").strip()
+                patronyme = (e.get("denomination_complementaire_ou_patronyme") or "").strip()
+                nom = f"{principale} {patronyme}".strip() or principale or patronyme
+
+            resultat.append({
+                "code_uai": e["numero_d_uai"],
+                "nom_etablissement": nom,
+                "type_etablissement": type_etab,
+                "statut": e.get("secteur"),
+                "adresse": e.get("adresse_designation_de_la_voie"),
+                "commune": e.get("libelle_de_la_commune"),
+                "code_postal": e.get("adresse_code_postal"),
+                "departement": e.get("libelle_du_departement_ou_de_la_collectivite"),
+                "latitude": lat,
+                "longitude": lon,
+                "site_key": f"{lat}_{lon}",
+            })
+
+    print(f"  identite : {n_lues} lignes lues, {len(resultat)} retenues "
+          f"({n_fermees} fermees/a_ouvrir, {n_type_inconnu} type non reconnu, "
+          f"{n_sans_coord} sans coordonnees)")
+
     return resultat
 
 
@@ -327,12 +379,6 @@ def construire_ips_et_historique():
 
     ips_courant = {}
     historique = {}
-
-    familles = [
-        (lignes_ecoles, "ips", None),
-        (lignes_colleges, "ips", "college"),
-        (lignes_lycees, None, "lycee"),  # champ ips resolu ci-dessous (voie GT/PRO)
-    ]
 
     # --- Écoles ---
     par_uai = defaultdict(list)
@@ -408,7 +454,7 @@ def construire_ips_et_historique():
 
 
 # ---------------------------------------------------------------------------
-# 3. EFFECTIFS — INCHANGÉ (dépend toujours des sources JSON dédiées si présentes)
+# 3. EFFECTIFS — INCHANGÉ (JSON dédiés, optionnels)
 # ---------------------------------------------------------------------------
 
 def extraire_langues(record):
@@ -423,14 +469,6 @@ def extraire_langues(record):
                 langues.add(label)
                 break
     return sorted(langues)
-
-
-def _load_optionnel(nom):
-    chemin = SRC / nom
-    if not chemin.exists():
-        print(f"  (absent, ignore) {nom}")
-        return []
-    return load(nom)
 
 
 def construire_effectifs_ecoles():
@@ -577,7 +615,7 @@ def ajouter_percentiles_ips(indicateurs, identite):
 
 
 # ---------------------------------------------------------------------------
-# 4. RÉSULTATS (IVAC/IVAL) — INCHANGÉ, année courante uniquement
+# 4. RÉSULTATS (IVAC/IVAL) — année courante uniquement
 # ---------------------------------------------------------------------------
 
 def moyenne_ponderee(valeur_a, poids_a, valeur_b, poids_b):
@@ -687,14 +725,12 @@ def construire_resultats():
             "resultats_millesime": e.get("annee"),
         }
 
-    lycees_gt_source = _load_optionnel(SOURCE_IVAL_LYCEES_GT.replace(".csv", ".json"))
-    if not lycees_gt_source:
-        lycees_gt_rows = charger_csv_multi_annees(SOURCE_IVAL_LYCEES_GT, colonnes_annee=["annee"])
-        plus_recentes_gt = {}
-        for l in lycees_gt_rows:
-            if l["uai"] not in plus_recentes_gt or l["annee"] > plus_recentes_gt[l["uai"]]["annee"]:
-                plus_recentes_gt[l["uai"]] = l
-        lycees_gt_source = list(plus_recentes_gt.values())
+    lycees_gt_rows = charger_csv_multi_annees(SOURCE_IVAL_LYCEES_GT, colonnes_annee=["annee"])
+    plus_recentes_gt = {}
+    for l in lycees_gt_rows:
+        if l["uai"] not in plus_recentes_gt or l["annee"] > plus_recentes_gt[l["uai"]]["annee"]:
+            plus_recentes_gt[l["uai"]] = l
+    lycees_gt_source = list(plus_recentes_gt.values())
 
     lycees_gt = {e["uai"]: extraire_lycee(e, FILIERES_RESULTATS_GT, LABEL_FILIERE_GT) for e in lycees_gt_source}
     for e in lycees_gt_source:
@@ -717,6 +753,7 @@ def construire_resultats():
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
 
+    print("--- Construction identité (localisation) ---")
     identite = construire_identite()
 
     print("\n--- Construction IPS + historique (multi-annees, CSV) ---")
@@ -724,8 +761,6 @@ def main():
 
     indicateurs = construire_indicateurs(identite, ips_courant)
 
-    # L'historique n'est expose que pour les UAI presents dans identite.json
-    # (coherence stricte avec ce que la carte affiche reellement).
     uai_identite = {e["code_uai"] for e in identite}
     historique_final = {uai: pts for uai, pts in historique.items() if uai in uai_identite}
 
