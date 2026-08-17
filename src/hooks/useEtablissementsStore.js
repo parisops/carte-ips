@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { joinByUai } from "../utils/joinData";
+import { trackEvent } from "../utils/analytics";
 
 const URL_IDENTITE = `${import.meta.env.BASE_URL}data/identite.json`;
 const URL_INDICATEURS = `${import.meta.env.BASE_URL}data/indicateurs.json`;
@@ -119,6 +120,15 @@ export const useEtablissementsStore = create((set, get) => ({
     }
   },
 
+  /**
+   * AJOUT ANALYTICS — quelques transitions de filtre sont suivies via
+   * GoatCounter (cf. src/utils/analytics.js), toujours avec des libellés
+   * génériques (jamais le texte de recherche saisi, ni un code_uai) :
+   * - département sélectionné (nom du département uniquement)
+   * - passage recherche vide → non vide (pas à chaque frappe)
+   * - activation d'un dispositif (ULIS/SEGPA/REP)
+   * - relâchement du slider IPS (déjà "commit only", donc peu fréquent)
+   */
   setFiltre: (chemin, valeur) =>
     set((state) => {
       const filtres = structuredClone(state.filtres);
@@ -128,6 +138,17 @@ export const useEtablissementsStore = create((set, get) => ({
       } else {
         filtres[parts[0]][parts[1]] = valeur;
       }
+
+      if (chemin === "departement" && valeur !== "Tous") {
+        trackEvent("departement-selectionne", valeur);
+      } else if (chemin === "recherche" && valeur.trim() !== "" && state.filtres.recherche.trim() === "") {
+        trackEvent("filtre-recherche-utilisee");
+      } else if (parts[0] === "dispositifs" && valeur === true) {
+        trackEvent("filtre-dispositif-actif", parts[1]);
+      } else if (chemin === "ipsMin" && valeur !== state.bornesIps[0]) {
+        trackEvent("filtre-ips-ajuste");
+      }
+
       return { filtres };
     }),
 
@@ -140,7 +161,17 @@ export const useEtablissementsStore = create((set, get) => ({
       },
     })),
 
+  /**
+   * AJOUT ANALYTICS — suit le TYPE d'établissement consulté (École/Collège/
+   * Lycée), jamais l'établissement précis : évite de créer des milliers
+   * d'entrées distinctes dans GoatCounter (qui groupe par path) et ne
+   * collecte aucune donnée assimilable à un profil de navigation individuel.
+   */
   selectionnerEtablissement: (code_uai) => {
+    const etablissement = get().etablissements.find((e) => e.code_uai === code_uai);
+    if (etablissement) {
+      trackEvent("etablissement-selectionne", etablissement.type_etablissement);
+    }
     set({ etablissementSelectionneId: code_uai });
     get().chargerResultatsSiBesoin();
     get().chargerHistoriqueSiBesoin();
