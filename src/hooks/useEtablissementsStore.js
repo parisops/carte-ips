@@ -4,6 +4,7 @@ import { joinByUai } from "../utils/joinData";
 const URL_IDENTITE = `${import.meta.env.BASE_URL}data/identite.json`;
 const URL_INDICATEURS = `${import.meta.env.BASE_URL}data/indicateurs.json`;
 const URL_RESULTATS = `${import.meta.env.BASE_URL}data/resultats.json`;
+const URL_HISTORIQUE = `${import.meta.env.BASE_URL}data/historique_ips.json`;
 
 const FILTRES_PAR_DEFAUT = {
   types: { École: true, Collège: true, Lycée: true },
@@ -22,6 +23,12 @@ export const useEtablissementsStore = create((set, get) => ({
   erreurChargement: null,
   etablissementSelectionneId: null,
   resultatsCharges: false,
+  // AJOUT — historique IPS multi-années par UAI, chargé à la demande (fichier
+  // de 5+ Mo : hors de question de le charger au démarrage de la carte).
+  // Format brut : { code_uai: [[annee, ips], ...] }.
+  historique: {},
+  historiqueCharge: false,
+  historiqueEnErreur: false,
   bornesIps: [50, 170],
   bornesEffectif: [0, 2000],
 
@@ -83,6 +90,28 @@ export const useEtablissementsStore = create((set, get) => ({
     }
   },
 
+  /**
+   * Charge historique_ips.json à la demande (premier clic sur un
+   * établissement), une seule fois — comme chargerResultatsSiBesoin(), mais
+   * gardé dans une clé de state séparée (`historique`) plutôt que fusionné
+   * dans `etablissements` : ce n'est pas un champ scalaire par établissement,
+   * mais un tableau [[année, ips], ...] par UAI, consommé uniquement par
+   * HistoriqueIPS.jsx via le hook `useHistoriqueIPS`.
+   */
+  chargerHistoriqueSiBesoin: async () => {
+    if (get().historiqueCharge) return;
+    set({ historiqueCharge: true });
+    try {
+      const historique = await fetch(URL_HISTORIQUE).then((r) => {
+        if (!r.ok) throw new Error(`historique_ips.json : HTTP ${r.status}`);
+        return r.json();
+      });
+      set({ historique, historiqueEnErreur: false });
+    } catch {
+      set({ historiqueCharge: false, historiqueEnErreur: true });
+    }
+  },
+
   setFiltre: (chemin, valeur) =>
     set((state) => {
       const filtres = structuredClone(state.filtres);
@@ -107,6 +136,7 @@ export const useEtablissementsStore = create((set, get) => ({
   selectionnerEtablissement: (code_uai) => {
     set({ etablissementSelectionneId: code_uai });
     get().chargerResultatsSiBesoin();
+    get().chargerHistoriqueSiBesoin();
   },
   fermerPanneau: () => set({ etablissementSelectionneId: null }),
 }));
@@ -151,4 +181,26 @@ export function useEtablissementSelectionne() {
     () => etablissements.find((e) => e.code_uai === id) ?? null,
     [etablissements, id]
   );
+}
+
+/**
+ * Historique IPS d'un établissement donné, sous forme de tableau d'objets
+ * {annee, ips} trié par année croissante — prêt à être consommé par un
+ * graphique Recharts sans transformation supplémentaire côté composant.
+ * Retourne un tableau vide (pas null) tant que le fichier n'est pas chargé
+ * ou si l'UAI n'a pas d'historique connu, pour simplifier le rendu conditionnel.
+ */
+export function useHistoriqueIPS(codeUai) {
+  const historique = useEtablissementsStore((s) => s.historique);
+  const historiqueCharge = useEtablissementsStore((s) => s.historiqueCharge);
+
+  return useMemo(() => {
+    if (!historiqueCharge || !codeUai) return [];
+    const points = historique[codeUai];
+    if (!Array.isArray(points)) return [];
+    return points
+      .filter(([annee, ips]) => annee != null && ips != null)
+      .map(([annee, ips]) => ({ annee, ips }))
+      .sort((a, b) => a.annee - b.annee);
+  }, [historique, historiqueCharge, codeUai]);
 }
