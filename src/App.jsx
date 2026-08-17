@@ -68,7 +68,7 @@ export default function App() {
         {isLoaded && <CarteEtablissements />}
         {!isLoaded && !erreurChargement && (
           <div className="flex h-full items-center justify-center bg-sable-50 font-body text-sm text-encre-400">
-            Chargement des ~9000 établissements d'Île-de-France…
+            Chargement des établissements scolaires de France…
           </div>
         )}
         {erreurChargement && (

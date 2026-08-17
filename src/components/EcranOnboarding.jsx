@@ -32,9 +32,9 @@ export default function EcranOnboarding({ onFermer }) {
               Trajectoires
             </h1>
             <p className="mt-2 max-w-md font-body text-sm leading-relaxed text-encre-600">
-              Explorez la mixité sociale et la réussite scolaire de près de
-              9&nbsp;000 écoles, collèges et lycées d'Île-de-France, à partir
-              des données officielles du Ministère de l'Éducation nationale.
+              Explorez la mixité sociale et la réussite scolaire des écoles,
+              collèges et lycées de France, à partir des données officielles
+              du Ministère de l'Éducation nationale.
             </p>
           </div>
 
