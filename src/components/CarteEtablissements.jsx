@@ -9,8 +9,8 @@ import {
 import { regrouperParSite } from "../utils/joinData";
 import { couleurDegradeIPS, tailleDepuisEffectif, CLIP_PATH_PAR_FORME, FORME_PAR_TYPE } from "../utils/ipsColor";
 
-const CENTRE_IDF = [48.8499, 2.6377];
-const ZOOM_IDF = 9;
+const CENTRE_FRANCE = [46.6, 2.4];
+const ZOOM_FRANCE = 6;
 const SEUIL_MOBILE_PX = 768;
 const SEUIL_ZOOM_ECLATEMENT = 10;
 const SEUIL_DECLUSTERING = 14;
@@ -123,7 +123,7 @@ function CadrageInitial({ bounds }) {
   const [fait, setFait] = useState(false);
   useEffect(() => {
     if (fait || !bounds) return;
-    map.fitBounds(bounds, { padding: [32, 32], maxZoom: ZOOM_IDF });
+    map.fitBounds(bounds, { padding: [32, 32], maxZoom: ZOOM_FRANCE });
     setFait(true);
   }, [bounds, map, fait]);
   return null;
@@ -144,7 +144,7 @@ function RecentrageSurDepartement({ departement, sitesDuDepartement }) {
       return;
     }
     if (departement === "Tous") {
-      map.flyTo(CENTRE_IDF, ZOOM_IDF, { duration: 0.6 });
+      map.flyTo(CENTRE_FRANCE, ZOOM_FRANCE, { duration: 0.6 });
       return;
     }
     if (bounds) {
@@ -210,7 +210,7 @@ export default function CarteEtablissements() {
   const filtres = useEtablissementsStore((s) => s.filtres);
   const setFiltre = useEtablissementsStore((s) => s.setFiltre);
 
-  const [zoomActuel, setZoomActuel] = useState(ZOOM_IDF);
+  const [zoomActuel, setZoomActuel] = useState(ZOOM_FRANCE);
   const [viewportBounds, setViewportBounds] = useState(null);
 
   const [estMobile, setEstMobile] = useState(
@@ -261,7 +261,7 @@ export default function CarteEtablissements() {
     });
   }, [sites]);
 
-  const boundsIDF = useMemo(() => {
+  const boundsFrance = useMemo(() => {
     if (sites.length === 0) return null;
     return L.latLngBounds(sites.map((s) => [s.latitude, s.longitude]));
   }, [sites]);
@@ -290,8 +290,8 @@ export default function CarteEtablissements() {
   return (
     <div className="relative h-full w-full overflow-hidden rounded-none md:rounded-2xl md:shadow-panel">
       <MapContainer
-        center={CENTRE_IDF}
-        zoom={ZOOM_IDF}
+        center={CENTRE_FRANCE}
+        zoom={ZOOM_FRANCE}
         className="h-full w-full"
         zoomControl={false}
       >
@@ -388,7 +388,7 @@ export default function CarteEtablissements() {
           </MarkerClusterGroup>
         )}
 
-        <CadrageInitial bounds={boundsIDF} />
+        <CadrageInitial bounds={boundsFrance} />
         <RecentrageSurDepartement
           departement={filtres.departement}
           sitesDuDepartement={sitesDuDepartementFiltre}
