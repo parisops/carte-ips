@@ -726,7 +726,7 @@ def construire_resultats():
 
     lycees_gt = {e["uai"]: extraire_lycee(e, FILIERES_RESULTATS_GT, LABEL_FILIERE_GT) for e in lycees_gt_source}
     for e in lycees_gt_source:
-        gnle = to_float(e.get("taux_reu_gnle") or e.get("taux_reussite_gnle"))
+        gnle = to_float(e.get("taux_de_reussite_gnle"))
         if gnle is not None and e["uai"] in lycees_gt:
             lycees_gt[e["uai"]]["taux_reussite_par_filiere"]["Générale"] = gnle
 
