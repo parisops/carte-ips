@@ -11,6 +11,7 @@ import DonutParite from "./DonutParite";
 import EffectifsParNiveau from "./EffectifsParNiveau";
 import ResultatsScolaires from "./ResultatsScolaires";
 import InfoBulle from "./InfoBulle";
+import HistoriqueIPS from "./HistoriqueIPS";
 
 const HAUTEURS_ETATS = { peek: 16, mi: 52, plein: 92 };
 const SEUILS_SNAP = { peek: 30, mi: 72 };
@@ -120,10 +121,8 @@ export default function PanneauDetail({ variant = "flottant-desktop" }) {
   const contenu = (
     <ContenuFiche
       etablissement={etablissement}
-      fratrie={fratrie}
       parite={parite}
       dataFilieres={dataFilieres}
-      onSelectFratrie={selectionnerEtablissement}
     />
   );
 
@@ -361,9 +360,12 @@ function ContenuFiche({ etablissement, parite, dataFilieres }) {
           {etablissement.ips_percentile_regional != null && (
             <p className="mt-2 font-body text-xs text-encre-600">
               Plus favorisé que <span className="font-mono font-semibold">{etablissement.ips_percentile_regional}%</span>{" "}
-              des {etablissement.type_etablissement.toLowerCase()}s d'Île-de-France.
+              des {etablissement.type_etablissement.toLowerCase()}s de France.
             </p>
           )}
+
+          <HistoriqueIPS codeUai={etablissement.code_uai} valeurActuelle={etablissement.ips_etablissement} />
+
           {etablissement.ips_millesime && (
             <p className="mt-2 flex items-center gap-1 font-body text-[11px] text-encre-400">
               Source : DEPP (Ministère de l'Éducation nationale), rentrée {etablissement.ips_millesime}
