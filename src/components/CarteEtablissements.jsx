@@ -223,7 +223,6 @@ export default function CarteEtablissements() {
   }, []);
 
   const rayonCluster = estMobile ? 44 : 32;
-
   const margeViewport = zoomActuel >= SEUIL_ZOOM_MARGE_RESSERREE ? MARGE_RESSERREE : MARGE_LARGE;
 
   const sites = useMemo(() => {
@@ -251,13 +250,7 @@ export default function CarteEtablissements() {
       const lon = sitesGroupe.reduce((a, s) => a + s.longitude, 0) / sitesGroupe.length;
       const ipsConnus = sitesGroupe.map((s) => s.ipsMoyen).filter((v) => v != null);
       const count = sitesGroupe.reduce((a, s) => a + s.membres.length, 0);
-      return {
-        nom,
-        latitude: lat,
-        longitude: lon,
-        count,
-        ipsMoyen: ipsConnus.length ? ipsConnus.reduce((a, b) => a + b, 0) / ipsConnus.length : null,
-      };
+      return { nom, latitude: lat, longitude: lon, count, ipsMoyen: ipsConnus.length ? ipsConnus.reduce((a, b) => a + b, 0) / ipsConnus.length : null };
     });
   }, [sites]);
 
@@ -272,9 +265,7 @@ export default function CarteEtablissements() {
   );
 
   const etablissementSelectionne = etablissements.find((e) => e.code_uai === selectionId) ?? null;
-
   const vueEnsemble = filtres.departement === "Tous" && zoomActuel < SEUIL_ZOOM_ECLATEMENT;
-
   const sitesVisibles = useMemo(() => {
     if (vueEnsemble || !viewportBounds) return sites;
     return sites.filter((site) => {
@@ -282,103 +273,38 @@ export default function CarteEtablissements() {
       return viewportBounds.contains([site.latitude, site.longitude]);
     });
   }, [sites, viewportBounds, vueEnsemble, selectionId]);
-
-  const handleViewportChange = useCallback((bounds) => {
-    setViewportBounds(bounds);
-  }, []);
+  const handleViewportChange = useCallback((bounds) => setViewportBounds(bounds), []);
 
   return (
     <div className="relative h-full w-full overflow-hidden rounded-none md:rounded-2xl md:shadow-panel">
-      <MapContainer
-        center={CENTRE_FRANCE}
-        zoom={ZOOM_FRANCE}
-        className="h-full w-full"
-        zoomControl={false}
-      >
-        <TileLayer
-          url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-          attribution='&copy; OpenStreetMap contributors &copy; CARTO'
-        />
+      <MapContainer center={CENTRE_FRANCE} zoom={ZOOM_FRANCE} className="h-full w-full" zoomControl={false}>
+        <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" attribution='&copy; OpenStreetMap contributors &copy; CARTO' />
 
         {vueEnsemble ? (
           sitesParDepartement.map((dept) => (
-            <Marker
-              key={dept.nom}
-              position={[dept.latitude, dept.longitude]}
-              icon={creerIconeDepartement(dept, estMobile)}
-              eventHandlers={{ click: () => setFiltre("departement", dept.nom) }}
-            >
+            <Marker key={dept.nom} position={[dept.latitude, dept.longitude]} icon={creerIconeDepartement(dept, estMobile)} eventHandlers={{ click: () => setFiltre("departement", dept.nom) }}>
               <Tooltip direction="top" offset={[0, -12]} opacity={1}>
                 <div className="font-body text-sm">
                   <p className="font-semibold text-encre-950">{dept.nom}</p>
                   <p className="text-encre-600">{dept.count} établissements</p>
-                  {dept.ipsMoyen != null && (
-                    <p className="text-encre-400">
-                      IPS moyen&nbsp;: <span className="font-mono">{Math.round(dept.ipsMoyen)}</span>
-                    </p>
-                  )}
+                  {dept.ipsMoyen != null && <p className="text-encre-400">IPS moyen&nbsp;: <span className="font-mono">{Math.round(dept.ipsMoyen)}</span></p>}
                 </div>
               </Tooltip>
             </Marker>
           ))
         ) : (
-          <MarkerClusterGroup
-            chunkedLoading
-            chunkInterval={100}
-            chunkDelay={25}
-            iconCreateFunction={creerIconeCluster}
-            maxClusterRadius={rayonCluster}
-            disableClusteringAtZoom={SEUIL_DECLUSTERING}
-            spiderfyOnMaxZoom
-            removeOutsideVisibleBounds
-          >
+          <MarkerClusterGroup chunkedLoading chunkInterval={100} chunkDelay={25} iconCreateFunction={creerIconeCluster} maxClusterRadius={rayonCluster} disableClusteringAtZoom={SEUIL_DECLUSTERING} spiderfyOnMaxZoom removeOutsideVisibleBounds>
             {sitesVisibles.map((site) => {
               const estSiteSelectionne = site.membres.some((m) => m.code_uai === selectionId);
               const principal = site.membres.find((m) => m.code_uai === selectionId) ?? site.membres[0];
               return (
-                <Marker
-                  key={site.site_key}
-                  position={[site.latitude, site.longitude]}
-                  icon={creerIcone(site, estSiteSelectionne, bornesEffectif[0], bornesEffectif[1])}
-                  ips={site.ipsMoyen}
-                  eventHandlers={{
-                    click: () => selectionnerEtablissement(principal.code_uai),
-                  }}
-                >
+                <Marker key={site.site_key} position={[site.latitude, site.longitude]} icon={creerIcone(site, estSiteSelectionne, bornesEffectif[0], bornesEffectif[1])} ips={site.ipsMoyen} eventHandlers={{ click: () => selectionnerEtablissement(principal.code_uai) }}>
                   <Tooltip direction="top" offset={[0, -12]} opacity={1}>
                     <div className="font-body text-sm">
                       {site.membres.length === 1 ? (
-                        <>
-                          <p className="font-semibold text-encre-950">{principal.nom_etablissement}</p>
-                          <p className="text-encre-600">{principal.commune}</p>
-                          <p className="text-encre-400">
-                            {principal.ips_etablissement != null ? (
-                              <>
-                                IPS&nbsp;: <span className="font-mono">{principal.ips_etablissement}</span>
-                              </>
-                            ) : (
-                              "IPS non publié"
-                            )}
-                            {principal.effectif_total != null && (
-                              <> · {principal.effectif_total} élèves</>
-                            )}
-                          </p>
-                        </>
+                        <><p className="font-semibold text-encre-950">{principal.nom_etablissement}</p><p className="text-encre-600">{principal.commune}</p><p className="text-encre-400">{principal.ips_etablissement != null ? <>IPS&nbsp;: <span className="font-mono">{principal.ips_etablissement}</span></> : "IPS non publié"}{principal.effectif_total != null && <> · {principal.effectif_total} élèves</>}</p></>
                       ) : (
-                        <>
-                          <p className="font-semibold text-encre-950">
-                            {site.membres.length} établissements à cette adresse
-                          </p>
-                          <p className="text-encre-600">{principal.commune}</p>
-                          <ul className="mt-1 list-disc pl-4">
-                            {site.membres.map((m) => (
-                              <li key={m.code_uai}>
-                                {m.type_etablissement} — {m.nom_etablissement}
-                                {m.ips_etablissement != null && ` (IPS ${m.ips_etablissement})`}
-                              </li>
-                            ))}
-                          </ul>
-                        </>
+                        <><p className="font-semibold text-encre-950">{site.membres.length} établissements à cette adresse</p><p className="text-encre-600">{principal.commune}</p><ul className="mt-1 list-disc pl-4">{site.membres.map((m) => <li key={m.code_uai}>{m.type_etablissement} — {m.nom_etablissement}{m.ips_etablissement != null && ` (IPS ${m.ips_etablissement})`}</li>)}</ul></>
                       )}
                     </div>
                   </Tooltip>
@@ -389,15 +315,10 @@ export default function CarteEtablissements() {
         )}
 
         <CadrageInitial bounds={boundsFrance} />
-        <RecentrageSurDepartement
-          departement={filtres.departement}
-          sitesDuDepartement={sitesDuDepartementFiltre}
-        />
+        <RecentrageSurDepartement departement={filtres.departement} sitesDuDepartement={sitesDuDepartementFiltre} />
         <RecentrerSurSelection etablissement={etablissementSelectionne} />
         <SuiviZoom onZoomChange={setZoomActuel} />
-        {!vueEnsemble && (
-          <SuiviViewport onViewportChange={handleViewportChange} marge={margeViewport} />
-        )}
+        {!vueEnsemble && <SuiviViewport onViewportChange={handleViewportChange} marge={margeViewport} />}
       </MapContainer>
 
       <div className="pointer-events-none absolute inset-0 z-[900]">
@@ -407,18 +328,14 @@ export default function CarteEtablissements() {
         <div className="absolute inset-y-0 right-0 w-7 bg-gradient-to-l from-sable-100/70 to-transparent" />
       </div>
 
-      <div className="absolute right-4 top-4 z-[1000] flex flex-col items-end gap-2">
+      <div className="absolute right-4 top-16 z-[1000] flex flex-col items-end gap-2">
         {!vueEnsemble && (
-          <button
-            onClick={() => setFiltre("departement", "Tous")}
-            className="rounded-full bg-encre-950 px-3 py-1.5 font-body text-xs font-semibold text-sable-50 shadow-panel"
-          >
+          <button onClick={() => setFiltre("departement", "Tous")} className="rounded-full bg-encre-950 px-3 py-1.5 font-body text-xs font-semibold text-sable-50 shadow-panel">
             ← Tous les départements
           </button>
         )}
         <div className="rounded-xl bg-sable-50/95 px-3 py-1.5 font-mono text-xs text-encre-600 shadow-panel">
-          {etablissements.length} établissement{etablissements.length > 1 ? "s" : ""} · {sites.length} point
-          {sites.length > 1 ? "s" : ""} sur la carte
+          {etablissements.length} établissement{etablissements.length > 1 ? "s" : ""} · {sites.length} point{sites.length > 1 ? "s" : ""} sur la carte
         </div>
       </div>
     </div>
