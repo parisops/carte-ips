@@ -19,6 +19,20 @@ const MARGE_LARGE = 0.4;
 const MARGE_RESSERREE = 0.25;
 const DEBOUNCE_VIEWPORT_MS = 100;
 
+// Suivi GoatCounter : un seul événement "carte-interaction" par visite, à la
+// première interaction réelle avec la carte (clic sur un marqueur ou une
+// bulle département). sessionStorage (pas localStorage) : on veut mesurer
+// l'engagement PAR VISITE, pas seulement à la toute première visite du site.
+const CLE_INTERACTION_ENVOYEE = "trajectoires:carte-interaction-envoyee";
+function suivreInteractionCarte() {
+  if (typeof window === "undefined") return;
+  if (sessionStorage.getItem(CLE_INTERACTION_ENVOYEE)) return;
+  sessionStorage.setItem(CLE_INTERACTION_ENVOYEE, "1");
+  if (typeof window.goatcounter?.count === "function") {
+    window.goatcounter.count({ path: "carte-interaction", event: true });
+  }
+}
+
 function creerIcone(site, estSelectionne, effectifMin, effectifMax) {
   const multi = site.membres.length > 1;
   const typesPresents = new Set(site.membres.map((m) => m.type_etablissement));
@@ -282,7 +296,7 @@ export default function CarteEtablissements() {
 
         {vueEnsemble ? (
           sitesParDepartement.map((dept) => (
-            <Marker key={dept.nom} position={[dept.latitude, dept.longitude]} icon={creerIconeDepartement(dept, estMobile)} eventHandlers={{ click: () => setFiltre("departement", dept.nom) }}>
+            <Marker key={dept.nom} position={[dept.latitude, dept.longitude]} icon={creerIconeDepartement(dept, estMobile)} eventHandlers={{ click: () => { suivreInteractionCarte(); setFiltre("departement", dept.nom); } }}>
               <Tooltip direction="top" offset={[0, -12]} opacity={1}>
                 <div className="font-body text-sm">
                   <p className="font-semibold text-encre-950">{dept.nom}</p>
@@ -298,7 +312,7 @@ export default function CarteEtablissements() {
               const estSiteSelectionne = site.membres.some((m) => m.code_uai === selectionId);
               const principal = site.membres.find((m) => m.code_uai === selectionId) ?? site.membres[0];
               return (
-                <Marker key={site.site_key} position={[site.latitude, site.longitude]} icon={creerIcone(site, estSiteSelectionne, bornesEffectif[0], bornesEffectif[1])} ips={site.ipsMoyen} eventHandlers={{ click: () => selectionnerEtablissement(principal.code_uai) }}>
+                <Marker key={site.site_key} position={[site.latitude, site.longitude]} icon={creerIcone(site, estSiteSelectionne, bornesEffectif[0], bornesEffectif[1])} ips={site.ipsMoyen} eventHandlers={{ click: () => { suivreInteractionCarte(); selectionnerEtablissement(principal.code_uai); } }}>
                   <Tooltip direction="top" offset={[0, -12]} opacity={1}>
                     <div className="font-body text-sm">
                       {site.membres.length === 1 ? (
@@ -328,7 +342,7 @@ export default function CarteEtablissements() {
         <div className="absolute inset-y-0 right-0 w-7 bg-gradient-to-l from-sable-100/70 to-transparent" />
       </div>
 
-      <div className="absolute right-4 top-16 z-[1000] flex flex-col items-end gap-2">
+      <div className="absolute right-4 top-28 z-[1000] flex flex-col items-end gap-2 md:top-16">
         {!vueEnsemble && (
           <button onClick={() => setFiltre("departement", "Tous")} className="rounded-full bg-encre-950 px-3 py-1.5 font-body text-xs font-semibold text-sable-50 shadow-panel">
             ← Tous les départements
