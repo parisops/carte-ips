@@ -1,8 +1,7 @@
 import EffectifsParNiveau from "./EffectifsParNiveau";
 import InfoBulle from "./InfoBulle";
+import HistoriqueResultats from "./HistoriqueResultats";
 
-/** Même convention visuelle que les écarts IPS de GaugeIPS.jsx : vert si positif,
- * corail si négatif, gris si nul/inconnu — pour rester cohérent dans toute la fiche. */
 function EcartVA({ valeur }) {
   if (valeur == null) return null;
   const signe = valeur > 0 ? "+" : "";
@@ -35,11 +34,6 @@ function LigneIndicateur({ label, valeur, va, unite = "%" }) {
   );
 }
 
-// Libellé + info-bulle spécifiques selon le type d'établissement : IVAC pour
-// les collèges, IVAL pour les lycées. Un intitulé générique "Résultats
-// scolaires" masquait cette distinction officielle, pourtant utile pour
-// savoir à quel indicateur ministériel on se réfère (et le retrouver via ses
-// propres recherches).
 const INFOS_PAR_TYPE = {
   Collège: {
     titre: "Valeur ajoutée du collège (IVAC)",
@@ -58,17 +52,6 @@ const INFO_DEFAUT = {
     "Écart entre les résultats observés et ceux attendus pour un établissement accueillant un profil d'élèves comparable. Positif = fait mieux que prévu compte tenu de son public.",
 };
 
-/**
- * Résultats scolaires officiels (IVAC pour les collèges, IVAL pour les lycées) :
- * taux bruts + valeur ajoutée (VA) — l'écart à ce qu'on attendrait d'un
- * établissement au profil d'élèves comparable. Complémentaire à l'IPS : l'IPS
- * décrit le profil social/scolaire à l'ENTRÉE, la VA mesure la performance de
- * l'établissement compte tenu de ce profil, donc neutralise le biais "favorisé
- * = bons résultats" que l'IPS seul ne permet pas de démêler.
- *
- * N'existe pas pour les écoles (pas d'examen en primaire) : le composant
- * retourne simplement `null` dans ce cas, cohérent avec le reste de la fiche.
- */
 export default function ResultatsScolaires({ resultats, typeEtablissement }) {
   if (!resultats) return null;
 
@@ -116,6 +99,8 @@ export default function ResultatsScolaires({ resultats, typeEtablissement }) {
           Source : DEPP (Ministère de l'Éducation nationale), session {resultats_millesime}
         </p>
       )}
+
+      <HistoriqueResultats codeUai={resultats.code_uai} sigle={typeEtablissement === "Lycée" ? "IVAL" : "IVAC"} />
 
       {aMentionsDetail && (
         <div className="mt-4">
