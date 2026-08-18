@@ -8,6 +8,7 @@ import {
 } from "../hooks/useEtablissementsStore";
 import { regrouperParSite } from "../utils/joinData";
 import { couleurDegradeIPS, tailleDepuisEffectif, CLIP_PATH_PAR_FORME, FORME_PAR_TYPE } from "../utils/ipsColor";
+import { trackEvent } from "../utils/analytics";
 
 const CENTRE_FRANCE = [46.6, 2.4];
 const ZOOM_FRANCE = 6;
@@ -23,14 +24,15 @@ const DEBOUNCE_VIEWPORT_MS = 100;
 // première interaction réelle avec la carte (clic sur un marqueur ou une
 // bulle département). sessionStorage (pas localStorage) : on veut mesurer
 // l'engagement PAR VISITE, pas seulement à la toute première visite du site.
+// Passe par trackEvent() (src/utils/analytics.js) comme tous les autres
+// événements custom de l'app, pour rester regroupé de façon cohérente dans
+// le tableau de bord GoatCounter (même préfixe "event:", même format).
 const CLE_INTERACTION_ENVOYEE = "trajectoires:carte-interaction-envoyee";
 function suivreInteractionCarte() {
   if (typeof window === "undefined") return;
   if (sessionStorage.getItem(CLE_INTERACTION_ENVOYEE)) return;
   sessionStorage.setItem(CLE_INTERACTION_ENVOYEE, "1");
-  if (typeof window.goatcounter?.count === "function") {
-    window.goatcounter.count({ path: "carte-interaction", event: true });
-  }
+  trackEvent("carte-interaction");
 }
 
 function creerIcone(site, estSelectionne, effectifMin, effectifMax) {
