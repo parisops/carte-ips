@@ -31,6 +31,11 @@ export const useEtablissementsStore = create((set, get) => ({
   historiqueResultats: {},
   historiqueResultatsCharge: false,
   historiqueResultatsEnErreur: false,
+  // AJOUT — vrai dès la première interaction significative avec l'app
+  // (recherche, filtre, sélection de département ou d'établissement) :
+  // sert de signal pour n'afficher la bulle d'avis qu'à un visiteur qui a
+  // vraiment commencé à utiliser la carte, pas à l'arrivée sur la page.
+  aInteragi: false,
   bornesIps: [50, 170],
   bornesEffectif: [0, 2000],
 
@@ -139,17 +144,22 @@ export const useEtablissementsStore = create((set, get) => ({
         filtres[parts[0]][parts[1]] = valeur;
       }
 
+      let interactionDetectee = false;
       if (chemin === "departement" && valeur !== "Tous") {
         trackEvent("departement-selectionne", valeur);
+        interactionDetectee = true;
       } else if (chemin === "recherche" && valeur.trim() !== "" && state.filtres.recherche.trim() === "") {
         trackEvent("filtre-recherche-utilisee");
+        interactionDetectee = true;
       } else if (parts[0] === "dispositifs" && valeur === true) {
         trackEvent("filtre-dispositif-actif", parts[1]);
+        interactionDetectee = true;
       } else if (chemin === "ipsMin" && valeur !== state.bornesIps[0]) {
         trackEvent("filtre-ips-ajuste");
+        interactionDetectee = true;
       }
 
-      return { filtres };
+      return { filtres, aInteragi: state.aInteragi || interactionDetectee };
     }),
 
   resetFiltres: () =>
@@ -172,7 +182,7 @@ export const useEtablissementsStore = create((set, get) => ({
     if (etablissement) {
       trackEvent("etablissement-selectionne", etablissement.type_etablissement);
     }
-    set({ etablissementSelectionneId: code_uai });
+    set({ etablissementSelectionneId: code_uai, aInteragi: true });
     get().chargerResultatsSiBesoin();
     get().chargerHistoriqueSiBesoin();
     get().chargerHistoriqueResultatsSiBesoin();
@@ -250,4 +260,8 @@ export function useHistoriqueResultats(codeUai) {
       .map(([annee, taux, va]) => ({ annee, taux, va: va ?? null }))
       .sort((a, b) => a.annee - b.annee);
   }, [historiqueResultats, historiqueResultatsCharge, codeUai]);
+}
+
+export function useAInteragi() {
+  return useEtablissementsStore((s) => s.aInteragi);
 }
