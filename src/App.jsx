@@ -5,6 +5,7 @@ import ChipsFiltresActifs from "./components/ChipsFiltresActifs";
 import CarteEtablissements from "./components/CarteEtablissements";
 import { LogoTrajectoires } from "./components/EcranOnboarding";
 import { trackEvent } from "./utils/analytics";
+import BulleAvis from "./components/BulleAvis";
 
 const PanneauDetail = lazy(() => import("./components/PanneauDetail"));
 const MentionsLegales = lazy(() => import("./components/MentionsLegales"));
@@ -138,6 +139,8 @@ export default function App() {
           <EcranOnboarding onFermer={fermerOnboarding} />
         </Suspense>
       )}
+
+      <BulleAvis />
     </div>
   );
 }
