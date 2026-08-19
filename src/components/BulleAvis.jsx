@@ -4,17 +4,13 @@ import { useAInteragi } from "../hooks/useEtablissementsStore";
 import { trackEvent } from "../utils/analytics";
 
 /**
- * Adresse de réception éclatée en morceaux plutôt qu'en chaîne contiguë : ne
- * bloque pas un humain déterminé à lire le bundle JS, mais évite qu'un
- * scraper automatisé (regex sur un motif d'email) la récupère directement
- * dans le code source livré au navigateur. Combiné aux protections propres
- * de FormSubmit (reCAPTCHA + honeypot), c'est une défense en profondeur
- * raisonnable pour un simple formulaire d'avis, pas une garantie absolue.
+ * Jeton FormSubmit (fourni après confirmation de l'adresse de réception) au
+ * lieu de l'adresse email en clair : ce jeton pointe vers le même compte
+ * FormSubmit, mais ne révèle jamais l'adresse réelle dans le code livré au
+ * navigateur, y compris à l'inspection du bundle JS.
  */
-const PARTIES_EMAIL = ["vivien.colas", "@", "outlook.com"];
-function construireEndpointAvis() {
-  return `https://formsubmit.co/ajax/${PARTIES_EMAIL.join("")}`;
-}
+const JETON_FORMSUBMIT = "caeba402af3e279c617c491017dd1ec9";
+const ENDPOINT_AVIS = `https://formsubmit.co/ajax/${JETON_FORMSUBMIT}`;
 
 /**
  * Bulle flottante "Laisser un avis" — volontairement invisible tant que
@@ -30,8 +26,9 @@ function construireEndpointAvis() {
 export default function BulleAvis() {
   const aInteragi = useAInteragi();
   const [ouverte, setOuverte] = useState(false);
-  const [message, setMessage] = useState("");
   const [nom, setNom] = useState("");
+  const [email, setEmail] = useState("");
+  const [message, setMessage] = useState("");
   const [envoiEnCours, setEnvoiEnCours] = useState(false);
   const [envoye, setEnvoye] = useState(false);
   const [erreur, setErreur] = useState(false);
@@ -54,13 +51,14 @@ export default function BulleAvis() {
     setEnvoiEnCours(true);
     setErreur(false);
     try {
-      const reponse = await fetch(construireEndpointAvis(), {
+      const reponse = await fetch(ENDPOINT_AVIS, {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify({
-          nom: nom.trim() || "Anonyme",
+          nom: nom.trim() || "Non renseigné",
+          email: email.trim() || "Non renseigné",
           message: message.trim(),
-          _subject: "Nouvel avis — Trajectoires",
+          _subject: "Nouveau message — Trajectoires",
         }),
       });
       if (!reponse.ok) throw new Error("Échec de l'envoi");
@@ -78,7 +76,7 @@ export default function BulleAvis() {
       <button
         onClick={ouvrir}
         className="pointer-events-auto fixed bottom-4 right-4 z-[1300] flex h-12 w-12 items-center justify-center rounded-full bg-encre-950 text-sable-50 shadow-panel transition-transform hover:scale-105 active:scale-95 md:bottom-5 md:right-5"
-        aria-label="Laisser un avis ou une question"
+        aria-label="Contacter l'équipe Trajectoires"
       >
         <MessageCircle size={20} />
       </button>
@@ -94,7 +92,7 @@ export default function BulleAvis() {
           >
             <div className="mb-3 flex items-center justify-between">
               <h2 className="font-display text-base font-semibold text-encre-950">
-                {envoye ? "Merci !" : "Un avis, une question ?"}
+                {envoye ? "Message envoyé" : "Votre avis nous intéresse"}
               </h2>
               <button
                 onClick={fermer}
@@ -108,28 +106,39 @@ export default function BulleAvis() {
             {envoye ? (
               <div className="flex items-center gap-2 rounded-xl bg-tableau-100 px-3 py-3 font-body text-sm text-tableau-700">
                 <Check size={16} />
-                Ton message a bien été envoyé.
+                Merci, votre message a bien été transmis.
               </div>
             ) : (
               <form onSubmit={envoyer} className="space-y-2.5">
+                <p className="font-body text-xs leading-relaxed text-encre-600">
+                  Une remarque, une question ou une suggestion d'amélioration ?
+                  N'hésitez pas à nous en faire part.
+                </p>
                 <input
                   type="text"
                   value={nom}
                   onChange={(e) => setNom(e.target.value)}
-                  placeholder="Ton prénom (optionnel)"
+                  placeholder="Nom (optionnel)"
+                  className="w-full rounded-lg border border-sable-200 bg-white px-3 py-2 font-body text-sm text-encre-950 placeholder:text-encre-400 focus:outline-none focus:ring-2 focus:ring-encre-600"
+                />
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Adresse email (optionnel, pour une réponse)"
                   className="w-full rounded-lg border border-sable-200 bg-white px-3 py-2 font-body text-sm text-encre-950 placeholder:text-encre-400 focus:outline-none focus:ring-2 focus:ring-encre-600"
                 />
                 <textarea
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
-                  placeholder="Ton avis ou ta question…"
+                  placeholder="Votre message"
                   required
                   rows={4}
                   className="w-full rounded-lg border border-sable-200 bg-white px-3 py-2 font-body text-sm text-encre-950 placeholder:text-encre-400 focus:outline-none focus:ring-2 focus:ring-encre-600"
                 />
                 {erreur && (
                   <p className="font-body text-xs text-craie-600">
-                    L'envoi a échoué, réessaie dans un instant.
+                    L'envoi a échoué. Merci de réessayer dans un instant.
                   </p>
                 )}
                 <button
@@ -138,7 +147,7 @@ export default function BulleAvis() {
                   className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-encre-950 px-4 py-2.5 font-body text-sm font-semibold text-sable-50 disabled:opacity-50"
                 >
                   <Send size={14} />
-                  {envoiEnCours ? "Envoi…" : "Envoyer"}
+                  {envoiEnCours ? "Envoi en cours…" : "Envoyer"}
                 </button>
               </form>
             )}
