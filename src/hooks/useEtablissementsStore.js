@@ -169,6 +169,29 @@ export const useEtablissementsStore = create((set, get) => ({
     get().chargerHistoriqueResultatsSiBesoin();
   },
   fermerPanneau: () => set({ etablissementSelectionneId: null }),
+
+  /**
+   * Applique une suggestion d'autocomplétion (cf. useSuggestionsRecherche) :
+   * une commune remplit la recherche avec son nom ET sélectionne son premier
+   * établissement (alphabétique) pour centrer la carte dessus (réutilise le
+   * recentrage déjà déclenché par selectionnerEtablissement — pas besoin
+   * d'une logique de centrage dédiée à la commune). Un établissement remplit
+   * la recherche avec son nom et se sélectionne directement.
+   */
+  selectionnerSuggestion: (suggestion) => {
+    if (suggestion.type === "commune") {
+      const premier = get()
+        .etablissements.filter((e) => e.commune === suggestion.label)
+        .sort((a, b) => a.nom_etablissement.localeCompare(b.nom_etablissement))[0];
+      get().setFiltre("recherche", suggestion.label);
+      if (premier) get().selectionnerEtablissement(premier.code_uai);
+      trackEvent("suggestion-recherche-choisie", "commune");
+    } else {
+      get().setFiltre("recherche", suggestion.label);
+      get().selectionnerEtablissement(suggestion.codeUai);
+      trackEvent("suggestion-recherche-choisie", "etablissement");
+    }
+  },
 }));
 
 import { useMemo } from "react";
@@ -220,6 +243,57 @@ export function useEtablissementsFiltres() {
       return true;
     });
   }, [etablissements, filtres]);
+}
+
+/**
+ * Suggestions d'autocomplétion : jusqu'à 5 résultats maximum, communes
+ * correspondantes d'abord (triées alphabétiquement), puis établissements
+ * correspondants (triés alphabétiquement) — soit par leur propre nom, soit
+ * parce qu'ils sont situés dans une commune déjà trouvée (permet à "saint
+ * cloud" de proposer aussi les établissements de Saint-Cloud, pas seulement
+ * la ville). Cherche dans TOUS les établissements chargés, indépendamment
+ * des autres filtres actifs (type, statut, IPS...).
+ */
+export function useSuggestionsRecherche() {
+  const etablissements = useEtablissementsStore((s) => s.etablissements);
+  const filtres = useEtablissementsStore((s) => s.filtres);
+
+  return useMemo(() => {
+    const motsRecherche = normaliserPourRecherche(filtres.recherche).split(" ").filter(Boolean);
+    if (motsRecherche.length === 0) return [];
+
+    const correspond = (texte) => {
+      const cible = normaliserPourRecherche(texte);
+      return motsRecherche.every((mot) => cible.includes(mot));
+    };
+
+    const communesTrouvees = Array.from(
+      new Set(etablissements.map((e) => e.commune).filter(Boolean))
+    )
+      .filter((commune) => correspond(commune))
+      .sort((a, b) => a.localeCompare(b));
+
+    const suggestionsCommunes = communesTrouvees.map((commune) => ({
+      type: "commune",
+      cle: `commune-${commune}`,
+      label: commune,
+    }));
+
+    const communesTrouveesSet = new Set(communesTrouvees);
+    const etablissementsTrouves = etablissements
+      .filter((e) => correspond(e.nom_etablissement) || communesTrouveesSet.has(e.commune))
+      .sort((a, b) => a.nom_etablissement.localeCompare(b.nom_etablissement));
+
+    const suggestionsEtablissements = etablissementsTrouves.map((e) => ({
+      type: "etablissement",
+      cle: e.code_uai,
+      label: e.nom_etablissement,
+      commune: e.commune,
+      codeUai: e.code_uai,
+    }));
+
+    return [...suggestionsCommunes, ...suggestionsEtablissements].slice(0, 5);
+  }, [etablissements, filtres.recherche]);
 }
 
 export function useEtablissementSelectionne() {

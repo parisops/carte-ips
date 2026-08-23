@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { Search, SlidersHorizontal, ChevronDown, X, HelpCircle } from "lucide-react";
-import { useEtablissementsStore } from "../hooks/useEtablissementsStore";
+import { Search, SlidersHorizontal, ChevronDown, X, HelpCircle, MapPin, School } from "lucide-react";
+import { useEtablissementsStore, useSuggestionsRecherche } from "../hooks/useEtablissementsStore";
 import {
   couleurDegradeIPS,
   COULEUR_IPS_INCONNU,
@@ -159,11 +159,49 @@ function LegendeCarte({ collapsibleParDefaut = false }) {
   );
 }
 
+/**
+ * Liste déroulante d'autocomplétion sous le champ de recherche : jusqu'à 5
+ * suggestions (communes puis établissements, cf. useSuggestionsRecherche),
+ * chacune cliquable. Un clic délègue entièrement au store
+ * (selectionnerSuggestion) : remplit la recherche ET centre la carte sur la
+ * commune ou l'établissement choisi.
+ */
+function SuggestionsRecherche({ onChoisir }) {
+  const suggestions = useSuggestionsRecherche();
+  if (suggestions.length === 0) return null;
+
+  return (
+    <ul className="absolute inset-x-0 top-full z-10 mt-1.5 overflow-hidden rounded-xl border border-sable-200 bg-white shadow-panel">
+      {suggestions.map((s) => (
+        <li key={s.cle}>
+          <button
+            onClick={() => onChoisir(s)}
+            className="flex w-full items-center gap-2 px-3.5 py-2.5 text-left font-body text-sm text-encre-950 hover:bg-sable-100"
+          >
+            {s.type === "commune" ? (
+              <MapPin size={14} className="shrink-0 text-encre-400" />
+            ) : (
+              <School size={14} className="shrink-0 text-encre-400" />
+            )}
+            <span className="min-w-0 flex-1 truncate">
+              {s.label}
+              {s.type === "etablissement" && s.commune && (
+                <span className="ml-1.5 text-encre-400">— {s.commune}</span>
+              )}
+            </span>
+          </button>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 function ContenuFiltres({ onFermer }) {
   const filtres = useEtablissementsStore((s) => s.filtres);
   const setFiltre = useEtablissementsStore((s) => s.setFiltre);
   const resetFiltres = useEtablissementsStore((s) => s.resetFiltres);
   const bornesIps = useEtablissementsStore((s) => s.bornesIps);
+  const selectionnerSuggestion = useEtablissementsStore((s) => s.selectionnerSuggestion);
 
   return (
     <div className="space-y-3">
@@ -177,6 +215,7 @@ function ContenuFiltres({ onFermer }) {
           className="w-full rounded-xl border border-sable-200 bg-white py-2.5 pl-9 pr-3 font-body text-sm
                      text-encre-950 placeholder:text-encre-400 focus:outline-none focus:ring-2 focus:ring-encre-600"
         />
+        <SuggestionsRecherche onChoisir={selectionnerSuggestion} />
       </div>
 
       <div className="space-y-3.5 rounded-2xl border border-sable-200 bg-white p-3.5">
