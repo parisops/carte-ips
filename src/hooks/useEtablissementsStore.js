@@ -31,10 +31,6 @@ export const useEtablissementsStore = create((set, get) => ({
   historiqueResultats: {},
   historiqueResultatsCharge: false,
   historiqueResultatsEnErreur: false,
-  // AJOUT — vrai dès la première interaction significative avec l'app
-  // (recherche, filtre, sélection de département ou d'établissement) :
-  // sert de signal pour n'afficher la bulle d'avis qu'à un visiteur qui a
-  // vraiment commencé à utiliser la carte, pas à l'arrivée sur la page.
   aInteragi: false,
   bornesIps: [50, 170],
   bornesEffectif: [0, 2000],
@@ -125,15 +121,6 @@ export const useEtablissementsStore = create((set, get) => ({
     }
   },
 
-  /**
-   * AJOUT ANALYTICS — quelques transitions de filtre sont suivies via
-   * GoatCounter (cf. src/utils/analytics.js), toujours avec des libellés
-   * génériques (jamais le texte de recherche saisi, ni un code_uai) :
-   * - département sélectionné (nom du département uniquement)
-   * - passage recherche vide → non vide (pas à chaque frappe)
-   * - activation d'un dispositif (ULIS/SEGPA/REP)
-   * - relâchement du slider IPS (déjà "commit only", donc peu fréquent)
-   */
   setFiltre: (chemin, valeur) =>
     set((state) => {
       const filtres = structuredClone(state.filtres);
@@ -171,12 +158,6 @@ export const useEtablissementsStore = create((set, get) => ({
       },
     })),
 
-  /**
-   * AJOUT ANALYTICS — suit le TYPE d'établissement consulté (École/Collège/
-   * Lycée), jamais l'établissement précis : évite de créer des milliers
-   * d'entrées distinctes dans GoatCounter (qui groupe par path) et ne
-   * collecte aucune donnée assimilable à un profil de navigation individuel.
-   */
   selectionnerEtablissement: (code_uai) => {
     const etablissement = get().etablissements.find((e) => e.code_uai === code_uai);
     if (etablissement) {
@@ -192,12 +173,28 @@ export const useEtablissementsStore = create((set, get) => ({
 
 import { useMemo } from "react";
 
+/**
+ * Normalise une chaîne pour la recherche : minuscules, accents retirés
+ * (é/è/ê → e, etc.), tirets/apostrophes/ponctuation ramenés à des espaces.
+ * Sans ça, chercher "saint cloud" ne retrouvait pas "Saint-Cloud" (le tiret
+ * empêchait le match) — la recherche devient insensible à ces variations
+ * de graphie, dans les deux sens (texte saisi ET données).
+ */
+function normaliserPourRecherche(texte) {
+  return (texte ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
 export function useEtablissementsFiltres() {
   const etablissements = useEtablissementsStore((s) => s.etablissements);
   const filtres = useEtablissementsStore((s) => s.filtres);
 
   return useMemo(() => {
-    const recherche = filtres.recherche.trim().toLowerCase();
+    const motsRecherche = normaliserPourRecherche(filtres.recherche).split(" ").filter(Boolean);
 
     return etablissements.filter((e) => {
       if (!filtres.types[e.type_etablissement]) return false;
@@ -213,9 +210,11 @@ export function useEtablissementsFiltres() {
       const ips = e.ips_etablissement;
       if (ips != null && ips < filtres.ipsMin) return false;
 
-      if (recherche) {
-        const cible = `${e.nom_etablissement} ${e.commune} ${e.code_postal ?? ""} ${e.code_uai ?? ""}`.toLowerCase();
-        if (!cible.includes(recherche)) return false;
+      if (motsRecherche.length > 0) {
+        const cible = normaliserPourRecherche(
+          `${e.nom_etablissement} ${e.commune} ${e.code_postal ?? ""} ${e.code_uai ?? ""}`
+        );
+        if (!motsRecherche.every((mot) => cible.includes(mot))) return false;
       }
 
       return true;
