@@ -245,14 +245,21 @@ export function useEtablissementsFiltres() {
   }, [etablissements, filtres]);
 }
 
+// Plafond de sécurité : le panneau n'affiche que 5 suggestions à la fois
+// (cf. FiltresPanel.jsx, chargement au scroll), mais on calcule un peu plus
+// large pour permettre ce scroll incrémental sans jamais générer une liste
+// démesurée si la recherche est très courte (ex: une seule lettre).
+const MAX_SUGGESTIONS_CALCULEES = 30;
+
 /**
- * Suggestions d'autocomplétion : jusqu'à 5 résultats maximum, communes
- * correspondantes d'abord (triées alphabétiquement), puis établissements
- * correspondants (triés alphabétiquement) — soit par leur propre nom, soit
- * parce qu'ils sont situés dans une commune déjà trouvée (permet à "saint
- * cloud" de proposer aussi les établissements de Saint-Cloud, pas seulement
- * la ville). Cherche dans TOUS les établissements chargés, indépendamment
- * des autres filtres actifs (type, statut, IPS...).
+ * Suggestions d'autocomplétion : communes correspondantes d'abord (triées
+ * alphabétiquement), puis établissements correspondants (triés
+ * alphabétiquement) — soit par leur propre nom, soit parce qu'ils sont
+ * situés dans une commune déjà trouvée (permet à "saint cloud" de proposer
+ * aussi les établissements de Saint-Cloud, pas seulement la ville).
+ * Cherche dans TOUS les établissements chargés, indépendamment des autres
+ * filtres actifs (type, statut, IPS...). Le composant appelant gère
+ * l'affichage progressif (5 par 5) — cf. FiltresPanel.jsx.
  */
 export function useSuggestionsRecherche() {
   const etablissements = useEtablissementsStore((s) => s.etablissements);
@@ -292,7 +299,7 @@ export function useSuggestionsRecherche() {
       codeUai: e.code_uai,
     }));
 
-    return [...suggestionsCommunes, ...suggestionsEtablissements].slice(0, 5);
+    return [...suggestionsCommunes, ...suggestionsEtablissements].slice(0, MAX_SUGGESTIONS_CALCULEES);
   }, [etablissements, filtres.recherche]);
 }
 

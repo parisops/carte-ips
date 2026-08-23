@@ -159,20 +159,43 @@ function LegendeCarte({ collapsibleParDefaut = false }) {
   );
 }
 
+const SUGGESTIONS_PAR_PAGE = 5;
+
 /**
- * Liste déroulante d'autocomplétion sous le champ de recherche : jusqu'à 5
- * suggestions (communes puis établissements, cf. useSuggestionsRecherche),
- * chacune cliquable. Un clic délègue entièrement au store
+ * Liste déroulante d'autocomplétion sous le champ de recherche : 5
+ * suggestions affichées initialement (communes puis établissements, cf.
+ * useSuggestionsRecherche), 5 de plus chargées à chaque fois que le scroll
+ * approche du bas de la liste — jusqu'à épuisement des résultats calculés.
+ * Un clic sur une suggestion délègue entièrement au store
  * (selectionnerSuggestion) : remplit la recherche ET centre la carte sur la
  * commune ou l'établissement choisi.
  */
-function SuggestionsRecherche({ onChoisir }) {
+function SuggestionsRecherche({ onChoisir, recherche }) {
   const suggestions = useSuggestionsRecherche();
+  const [nombreAffiche, setNombreAffiche] = useState(SUGGESTIONS_PAR_PAGE);
+
+  // Nouvelle recherche → on repart d'un affichage court, pas du scroll précédent.
+  useEffect(() => {
+    setNombreAffiche(SUGGESTIONS_PAR_PAGE);
+  }, [recherche]);
+
   if (suggestions.length === 0) return null;
+  const visibles = suggestions.slice(0, nombreAffiche);
+
+  const gererScroll = (e) => {
+    const el = e.currentTarget;
+    const procheDuBas = el.scrollHeight - el.scrollTop - el.clientHeight < 32;
+    if (procheDuBas) {
+      setNombreAffiche((n) => Math.min(n + SUGGESTIONS_PAR_PAGE, suggestions.length));
+    }
+  };
 
   return (
-    <ul className="absolute inset-x-0 top-full z-10 mt-1.5 overflow-hidden rounded-xl border border-sable-200 bg-white shadow-panel">
-      {suggestions.map((s) => (
+    <ul
+      onScroll={gererScroll}
+      className="absolute inset-x-0 top-full z-10 mt-1.5 max-h-64 overflow-y-auto rounded-xl border border-sable-200 bg-white shadow-panel"
+    >
+      {visibles.map((s) => (
         <li key={s.cle}>
           <button
             onClick={() => onChoisir(s)}
@@ -196,12 +219,32 @@ function SuggestionsRecherche({ onChoisir }) {
   );
 }
 
+// Délai avant de répercuter la saisie dans le store (et donc de déclencher le
+// filtrage de ~9000 établissements) : sans lui, chaque frappe recalculait
+// immédiatement la liste filtrée, perceptible comme un lag pendant la
+// frappe. La saisie elle-même (état local) reste instantanée.
+const DEBOUNCE_RECHERCHE_MS = 200;
+
 function ContenuFiltres({ onFermer }) {
   const filtres = useEtablissementsStore((s) => s.filtres);
   const setFiltre = useEtablissementsStore((s) => s.setFiltre);
   const resetFiltres = useEtablissementsStore((s) => s.resetFiltres);
   const bornesIps = useEtablissementsStore((s) => s.bornesIps);
   const selectionnerSuggestion = useEtablissementsStore((s) => s.selectionnerSuggestion);
+
+  const [texteRecherche, setTexteRecherche] = useState(filtres.recherche);
+
+  // Resynchronise l'input si la recherche change depuis l'extérieur (clic
+  // sur une suggestion, réinitialisation des filtres...).
+  useEffect(() => {
+    setTexteRecherche(filtres.recherche);
+  }, [filtres.recherche]);
+
+  useEffect(() => {
+    if (texteRecherche === filtres.recherche) return;
+    const timer = setTimeout(() => setFiltre("recherche", texteRecherche), DEBOUNCE_RECHERCHE_MS);
+    return () => clearTimeout(timer);
+  }, [texteRecherche]);
 
   return (
     <div className="space-y-3">
@@ -210,12 +253,12 @@ function ContenuFiltres({ onFermer }) {
         <input
           type="text"
           placeholder="Chercher un nom, une commune, un code postal…"
-          value={filtres.recherche}
-          onChange={(e) => setFiltre("recherche", e.target.value)}
+          value={texteRecherche}
+          onChange={(e) => setTexteRecherche(e.target.value)}
           className="w-full rounded-xl border border-sable-200 bg-white py-2.5 pl-9 pr-3 font-body text-sm
-                     text-encre-950 placeholder:text-encre-400 focus:outline-none focus:ring-2 focus:ring-encre-600"
+                     text-encre-950 placeholder:text-encre-400 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-encre-600"
         />
-        <SuggestionsRecherche onChoisir={selectionnerSuggestion} />
+        <SuggestionsRecherche onChoisir={selectionnerSuggestion} recherche={filtres.recherche} />
       </div>
 
       <div className="space-y-3.5 rounded-2xl border border-sable-200 bg-white p-3.5">
