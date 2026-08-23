@@ -193,11 +193,16 @@ function SuggestionsRecherche({ onChoisir, recherche }) {
   return (
     <ul
       onScroll={gererScroll}
+      // max-h-52 (plus petit que la hauteur de 5 lignes) : garantit que la
+      // liste dépasse toujours dès qu'il y a 5 suggestions ou plus, pour que
+      // le scroll soit réellement possible (avec max-h-64, 5 lignes tenaient
+      // pile dans le cadre : rien ne dépassait, donc rien à scroller, et le
+      // chargement des suggestions suivantes ne se déclenchait jamais).
       // overscroll-contain : empêche le scroll de "déborder" vers le parent
       // (la feuille de filtres mobile, elle-même scrollable) une fois qu'on
       // atteint le haut/bas de cette liste — sans ça, continuer à swiper
       // faisait défiler toute la page derrière la liste de suggestions.
-      className="absolute inset-x-0 top-full z-10 mt-1.5 max-h-64 overflow-y-auto overscroll-contain rounded-xl border border-sable-200 bg-white shadow-panel"
+      className="absolute inset-x-0 top-full z-10 mt-1.5 max-h-52 overflow-y-auto overscroll-contain rounded-xl border border-sable-200 bg-white shadow-panel"
     >
       {visibles.map((s) => (
         <li key={s.cle}>
