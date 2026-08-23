@@ -193,7 +193,11 @@ function SuggestionsRecherche({ onChoisir, recherche }) {
   return (
     <ul
       onScroll={gererScroll}
-      className="absolute inset-x-0 top-full z-10 mt-1.5 max-h-64 overflow-y-auto rounded-xl border border-sable-200 bg-white shadow-panel"
+      // overscroll-contain : empêche le scroll de "déborder" vers le parent
+      // (la feuille de filtres mobile, elle-même scrollable) une fois qu'on
+      // atteint le haut/bas de cette liste — sans ça, continuer à swiper
+      // faisait défiler toute la page derrière la liste de suggestions.
+      className="absolute inset-x-0 top-full z-10 mt-1.5 max-h-64 overflow-y-auto overscroll-contain rounded-xl border border-sable-200 bg-white shadow-panel"
     >
       {visibles.map((s) => (
         <li key={s.cle}>
@@ -233,6 +237,11 @@ function ContenuFiltres({ onFermer }) {
   const selectionnerSuggestion = useEtablissementsStore((s) => s.selectionnerSuggestion);
 
   const [texteRecherche, setTexteRecherche] = useState(filtres.recherche);
+  // Contrôle explicite de l'affichage du menu de suggestions : fermé par
+  // Entrée ou par un clic sur une suggestion, rouvert dès que l'utilisateur
+  // retape. Sans cet état séparé, le menu se rouvrait tout seul après Entrée
+  // (les suggestions restent calculées tant que le texte matche).
+  const [suggestionsOuvertes, setSuggestionsOuvertes] = useState(true);
 
   // Resynchronise l'input si la recherche change depuis l'extérieur (clic
   // sur une suggestion, réinitialisation des filtres...).
@@ -254,25 +263,38 @@ function ContenuFiltres({ onFermer }) {
           type="text"
           placeholder="Chercher un nom, une commune, un code postal…"
           value={texteRecherche}
-          onChange={(e) => setTexteRecherche(e.target.value)}
+          onChange={(e) => {
+            setTexteRecherche(e.target.value);
+            setSuggestionsOuvertes(true);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              setSuggestionsOuvertes(false);
+              e.currentTarget.blur();
+            }
+          }}
           // text-base (16px) plutôt que text-sm : en dessous de 16px, Safari/
           // Chrome iOS zooment automatiquement la page au focus d'un champ
           // texte, ce qui laissait la fenêtre zoomée après la recherche.
           className="w-full rounded-xl border border-sable-200 bg-white py-2.5 pl-9 pr-3 font-body text-base
                      text-encre-950 placeholder:text-encre-400 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-encre-600"
         />
-        <SuggestionsRecherche
-          onChoisir={(s) => {
-            selectionnerSuggestion(s);
-            // Sur mobile, la recherche se fait dans la feuille de filtres :
-            // une fois un résultat choisi, on la referme pour révéler la
-            // carte et la fiche établissement qui vient de s'ouvrir.
-            // onFermer est undefined sur desktop (panneau flottant, pas
-            // besoin de le fermer), donc sans effet dans ce cas.
-            onFermer?.();
-          }}
-          recherche={filtres.recherche}
-        />
+        {suggestionsOuvertes && (
+          <SuggestionsRecherche
+            onChoisir={(s) => {
+              selectionnerSuggestion(s);
+              setSuggestionsOuvertes(false);
+              // Sur mobile, la recherche se fait dans la feuille de filtres :
+              // une fois un résultat choisi, on la referme pour révéler la
+              // carte et la fiche établissement qui vient de s'ouvrir.
+              // onFermer est undefined sur desktop (panneau flottant, pas
+              // besoin de le fermer), donc sans effet dans ce cas.
+              onFermer?.();
+            }}
+            recherche={filtres.recherche}
+          />
+        )}
       </div>
 
       <div className="space-y-3.5 rounded-2xl border border-sable-200 bg-white p-3.5">
