@@ -255,10 +255,24 @@ function ContenuFiltres({ onFermer }) {
           placeholder="Chercher un nom, une commune, un code postal…"
           value={texteRecherche}
           onChange={(e) => setTexteRecherche(e.target.value)}
-          className="w-full rounded-xl border border-sable-200 bg-white py-2.5 pl-9 pr-3 font-body text-sm
+          // text-base (16px) plutôt que text-sm : en dessous de 16px, Safari/
+          // Chrome iOS zooment automatiquement la page au focus d'un champ
+          // texte, ce qui laissait la fenêtre zoomée après la recherche.
+          className="w-full rounded-xl border border-sable-200 bg-white py-2.5 pl-9 pr-3 font-body text-base
                      text-encre-950 placeholder:text-encre-400 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-encre-600"
         />
-        <SuggestionsRecherche onChoisir={selectionnerSuggestion} recherche={filtres.recherche} />
+        <SuggestionsRecherche
+          onChoisir={(s) => {
+            selectionnerSuggestion(s);
+            // Sur mobile, la recherche se fait dans la feuille de filtres :
+            // une fois un résultat choisi, on la referme pour révéler la
+            // carte et la fiche établissement qui vient de s'ouvrir.
+            // onFermer est undefined sur desktop (panneau flottant, pas
+            // besoin de le fermer), donc sans effet dans ce cas.
+            onFermer?.();
+          }}
+          recherche={filtres.recherche}
+        />
       </div>
 
       <div className="space-y-3.5 rounded-2xl border border-sable-200 bg-white p-3.5">
