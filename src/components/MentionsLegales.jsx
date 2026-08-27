@@ -81,12 +81,14 @@ export default function MentionsLegales({ onClose }) {
           <section>
             <h3 className="mb-1 font-semibold text-encre-950">Mesure d'audience</h3>
             <p>
-              Ce site utilise GoatCounter pour compter les visites (pages
-              vues, provenance, pays, type d'appareil). Cet outil ne dépose
-              aucun cookie et ne stocke pas votre adresse IP complète : il
-              n'entre pas dans le champ du consentement préalable exigé par
-              la CNIL pour les traceurs, et n'est donc pas soumis à un
-              bandeau de consentement.
+              Ce site utilise GoatCounter et Umami, en parallèle, pour
+              compter les visites (pages vues, provenance, pays, type
+              d'appareil) et suivre quelques événements d'usage anonymes
+              (ex : filtre utilisé, établissement consulté). Ces deux outils
+              ne déposent aucun cookie et ne stockent pas votre adresse IP
+              complète : ils n'entrent pas dans le champ du consentement
+              préalable exigé par la CNIL pour les traceurs, et ne sont donc
+              pas soumis à un bandeau de consentement.
             </p>
           </section>
 
@@ -106,4 +108,3 @@ export default function MentionsLegales({ onClose }) {
     </div>
   );
 }
-
