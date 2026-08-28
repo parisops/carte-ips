@@ -334,9 +334,7 @@ export default function CarteEtablissements() {
         <RecentrageSurDepartement departement={filtres.departement} sitesDuDepartement={sitesDuDepartementFiltre} />
         <RecentrerSurSelection etablissement={etablissementSelectionne} />
         <SuiviZoom onZoomChange={setZoomActuel} />
-        {!vueEnsemble && (
-          <SuiviViewport onViewportChange={handleViewportChange} marge={margeViewport} />
-        )}
+        {!vueEnsemble && <SuiviViewport onViewportChange={handleViewportChange} marge={margeViewport} />}
       </MapContainer>
 
       <div className="pointer-events-none absolute inset-0 z-[900]">
