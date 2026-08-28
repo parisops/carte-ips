@@ -294,7 +294,7 @@ export default function CarteEtablissements() {
   return (
     <div className="relative h-full w-full overflow-hidden rounded-none md:rounded-2xl md:shadow-panel">
       <MapContainer center={CENTRE_FRANCE} zoom={ZOOM_FRANCE} className="h-full w-full" zoomControl={false}>
-        <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" attribution='&copy; OpenStreetMap contributors &copy; CARTO' />
+        <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png?key=cb1_2h8i_1_e62007e74f2676dbb792a934" attribution='&copy; OpenStreetMap contributors &copy; CARTO' />
 
         {vueEnsemble ? (
           sitesParDepartement.map((dept) => (
