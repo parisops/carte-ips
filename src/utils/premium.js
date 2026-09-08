@@ -1,9 +1,9 @@
 // Même destinataire que le formulaire de contact existant. Ce jeton public
 // identifie le formulaire ; ce n'est pas une clé d'authentification.
 export const ENDPOINT_CONTACT = "https://formsubmit.co/ajax/caeba402af3e279c617c491017dd1ec9";
-export const CONSENTEMENT_PARCOURSUP = "J’accepte de recevoir un email pour être prévenu du lancement du Traceur de Débouchés Parcoursup.";
+export const CONSENTEMENT_PREMIUM = "J’accepte de recevoir un email pour être prévenu du lancement de Trajectoires Premium.";
 
-export async function inscrireParcoursup(email, consentement, signal) {
+export async function inscrirePremium(email, consentement, signal) {
   if (!email.trim() || consentement !== true) throw new Error("Inscription incomplète");
   const reponse = await fetch(ENDPOINT_CONTACT, {
     method: "POST",
@@ -11,9 +11,9 @@ export async function inscrireParcoursup(email, consentement, signal) {
     signal,
     body: JSON.stringify({
       email: email.trim(),
-      _subject: "Liste d’attente Parcoursup — Trajectoires",
-      message: "Inscription à la liste d’attente du futur accès Premium Parcoursup.",
-      consentement: CONSENTEMENT_PARCOURSUP,
+      _subject: "Liste d’attente Premium — Trajectoires",
+      message: "Inscription à la liste d’attente Trajectoires Premium : comparaison de lycées et export PDF.",
+      consentement: CONSENTEMENT_PREMIUM,
       date_consentement: new Date().toISOString(),
     }),
   });

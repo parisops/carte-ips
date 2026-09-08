@@ -2,7 +2,7 @@ import { useState } from "react";
 import { MessageCircle, X, Send, Check } from "lucide-react";
 import { useAInteragi } from "../hooks/useEtablissementsStore";
 import { trackEvent } from "../utils/analytics";
-import { ENDPOINT_CONTACT } from "../utils/premiumParcoursup";
+import { ENDPOINT_CONTACT } from "../utils/premium";
 
 /**
  * Jeton FormSubmit (fourni après confirmation de l'adresse de réception) au

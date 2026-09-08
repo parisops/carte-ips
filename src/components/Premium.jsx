@@ -2,9 +2,9 @@ import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ArrowRight, Check, Compass, X } from "lucide-react";
 import { trackEvent } from "../utils/analytics";
-import { CONSENTEMENT_PARCOURSUP, inscrireParcoursup } from "../utils/premiumParcoursup";
+import { CONSENTEMENT_PREMIUM, inscrirePremium } from "../utils/premium";
 
-// Une exposition et une ouverture au maximum par chargement de page, même
+// Une exposition au maximum par chargement de page, même
 // lorsque les fiches mobile et desktop sont montées ensemble ou changent de lycée.
 const evenementsVus = new Set();
 function compterUneFois(evenement) {
@@ -13,7 +13,7 @@ function compterUneFois(evenement) {
   trackEvent(evenement);
 }
 
-export default function PremiumParcoursup() {
+export default function Premium() {
   const [ouvert, setOuvert] = useState(false);
   const carte = useRef(null);
 
@@ -21,7 +21,7 @@ export default function PremiumParcoursup() {
     if (typeof IntersectionObserver === "undefined") return;
     const observer = new IntersectionObserver(([entree]) => {
       if (entree.isIntersecting && entree.intersectionRatio >= 0.5) {
-        compterUneFois("premium-parcoursup-vu");
+        compterUneFois("premium-vu");
         observer.disconnect();
       }
     }, { threshold: 0.5 });
@@ -34,21 +34,22 @@ export default function PremiumParcoursup() {
       <p className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-tableau-700">
         <Compass size={17} aria-hidden="true" /> Premium · En développement
       </p>
-      <h3 className="font-display text-lg font-semibold text-encre-950">Mieux préparer les choix Parcoursup</h3>
-      <p className="mt-2 text-sm leading-relaxed text-encre-800">Des repères pour comprendre les formations post-bac et construire une liste de vœux éclairée.</p>
+      <h3 className="font-display text-lg font-semibold text-encre-950">Comparez vos lycées favoris</h3>
+      <p className="mt-2 text-sm leading-relaxed text-encre-800">Comprenez leurs différences et préparez votre choix avec une comparaison claire et un dossier PDF à partager en famille.</p>
       <button type="button" onClick={() => {
-        compterUneFois("premium-parcoursup-vu");
-        compterUneFois("premium-parcoursup-ouvert");
+        compterUneFois("premium-vu");
+        // Chaque clic d'ouverture compte, y compris après une fermeture.
+        trackEvent("premium-ouvert");
         setOuvert(true);
       }} className="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-tableau-700 px-3 py-2 text-sm font-semibold text-white hover:bg-encre-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tableau-700">
-        Découvrir le projet <ArrowRight size={17} aria-hidden="true" />
+        Découvrir le Premium <ArrowRight size={17} aria-hidden="true" />
       </button>
-      {ouvert && createPortal(<PresentationParcoursup onClose={() => setOuvert(false)} />, document.body)}
+      {ouvert && createPortal(<PresentationPremium onClose={() => setOuvert(false)} />, document.body)}
     </section>
   );
 }
 
-function PresentationParcoursup({ onClose }) {
+function PresentationPremium({ onClose }) {
   const dialogue = useRef(null);
   const requete = useRef(null);
   const id = useId();
@@ -78,14 +79,14 @@ function PresentationParcoursup({ onClose }) {
     setEtat("envoi");
     const delai = setTimeout(() => controller.abort(), 15000);
     try {
-      await inscrireParcoursup(email, consentement, controller.signal);
-      trackEvent("premium-parcoursup-inscription");
+      await inscrirePremium(email, consentement, controller.signal);
+      trackEvent("premium-inscription");
       setEmail("");
       setEtat("succes");
     } catch {
       if (controller.signal.reason === "fermeture") return;
       setEtat("erreur");
-      trackEvent("premium-parcoursup-erreur");
+      trackEvent("premium-erreur");
     } finally {
       clearTimeout(delai);
       requete.current = null;
@@ -97,17 +98,17 @@ function PresentationParcoursup({ onClose }) {
       className="m-auto max-h-[90dvh] w-[calc(100%-2rem)] max-w-lg overflow-y-auto rounded-2xl bg-sable-50 p-5 font-body text-encre-950 shadow-panel backdrop:bg-encre-950/50 sm:p-7">
       <div className="flex items-start justify-between gap-3">
         <p className="pt-3 text-xs font-semibold uppercase tracking-wide text-tableau-700">Futur accès Premium</p>
-        <button type="button" onClick={onClose} aria-label="Fermer la présentation Parcoursup" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full hover:bg-sable-200"><X size={22} /></button>
+        <button type="button" onClick={onClose} aria-label="Fermer la présentation Premium" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full hover:bg-sable-200"><X size={22} /></button>
       </div>
-      <h2 id={`${id}-titre`} className="mt-2 font-display text-2xl font-semibold">Traceur de Débouchés Parcoursup</h2>
-      <p className="mt-3 text-sm leading-relaxed text-encre-800">Nous préparons un outil pour aider les parents à comprendre les possibilités après le bac et à accompagner les choix de leur enfant.</p>
+      <h2 id={`${id}-titre`} className="mt-2 font-display text-2xl font-semibold">Vos lycées comparés, votre choix éclairé</h2>
+      <p className="mt-3 text-sm leading-relaxed text-encre-800">Réunissez les informations utiles sur vos lycées favoris pour préparer votre décision et vos visites en famille.</p>
       <p className="mt-4 text-sm font-semibold">Ce que nous souhaitons vous proposer :</p>
       <ul className="mt-2 list-disc space-y-2 pl-5 text-sm leading-relaxed text-encre-800">
-        <li>Mettre en perspective les indicateurs publics du lycée.</li>
-        <li>Comparer les formations : demande, capacité d’accueil et profils des admis publiés.</li>
-        <li>Des repères pour préparer une liste de vœux diversifiée et les questions à poser aux journées portes ouvertes.</li>
+        <li>Comparer jusqu’à 5 lycées : résultats au bac, mentions, accompagnement et contexte social.</li>
+        <li>Comprendre leurs différences et l’évolution des indicateurs disponibles.</li>
+        <li>Retrouver votre sélection sauvegardée et exporter un dossier PDF avec les points à vérifier lors des visites.</li>
       </ul>
-      <p className="mt-4 rounded-lg bg-sable-100 p-3 text-sm leading-relaxed text-encre-800">Le projet est en développement. Les données publiques ne permettent pas de suivre les destinations réelles des élèves de ce lycée ni de prédire une admission individuelle.</p>
+      <p className="mt-4 rounded-lg bg-sable-100 p-3 text-sm leading-relaxed text-encre-800">Le Premium est en développement. Inscrivez-vous pour être prévenu de son lancement.</p>
 
       {etat === "succes" ? (
         <div role="status" className="mt-5 rounded-xl bg-tableau-100 p-4 text-tableau-700">
@@ -118,12 +119,12 @@ function PresentationParcoursup({ onClose }) {
       ) : (
         <form onSubmit={envoyer} className="mt-5 space-y-3">
           <p className="text-sm font-semibold">Être prévenu du lancement</p>
-          <p className="text-sm text-encre-800">Inscription gratuite, sans engagement. L’accès Premium sera payant ; son tarif reste à définir.</p>
+          <p className="text-sm text-encre-800">L’inscription à la liste d’attente est gratuite et sans engagement. Le Premium sera proposé en paiement unique, sans abonnement. Tarif à définir.</p>
           <label htmlFor={`${id}-email`} className="block text-sm font-medium">Votre adresse email</label>
           <input id={`${id}-email`} name="email" type="email" autoComplete="email" required maxLength={254} value={email} onChange={e => setEmail(e.target.value)} disabled={etat === "envoi"} className="min-h-11 w-full rounded-lg border border-sable-200 bg-white px-3 py-2 text-base focus:border-tableau-700 focus:outline-tableau-700" />
           <label className="flex min-h-11 cursor-pointer items-start gap-3 text-sm leading-relaxed text-encre-800">
             <input type="checkbox" required checked={consentement} onChange={e => setConsentement(e.target.checked)} disabled={etat === "envoi"} className="mt-1 h-5 w-5 shrink-0 accent-tableau-700" />
-            {CONSENTEMENT_PARCOURSUP}
+            {CONSENTEMENT_PREMIUM}
           </label>
           <p className="text-xs leading-relaxed text-encre-600">Votre email est transmis via FormSubmit à l’éditeur de Trajectoires, uniquement pour cette liste d’attente. Vous pouvez demander sa suppression à tout moment via le bouton de contact du site.</p>
           {etat === "erreur" && <p role="alert" className="text-sm text-craie-600">L’inscription n’a pas pu être confirmée. Veuillez réessayer ou utiliser le bouton de contact du site.</p>}
