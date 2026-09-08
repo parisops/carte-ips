@@ -162,6 +162,12 @@ géographique donnée, sur l'ensemble du territoire couvert par l'app.
 
 ## Carte : clustering et logique de zoom
 
+La vue France se parcourt maintenant par niveaux : régions, départements, puis
+établissements. Paris propose un niveau supplémentaire par arrondissement,
+reconstruit à partir des codes postaux 75001 à 75020 (le référentiel source ne
+fournit pas de champ « quartier » dédié). Un bouton « Niveau précédent » permet
+de remonter dans cette navigation.
+
 - **Vue d'ensemble** : au dézoom (ou tant qu'aucun département n'est
   sélectionné), la carte affiche une bulle par département avec le nombre
   d'établissements et l'IPS moyen — bien plus lisible que des milliers de

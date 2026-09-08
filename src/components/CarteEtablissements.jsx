@@ -21,6 +21,34 @@ const MARGE_LARGE = 0.4;
 const MARGE_RESSERREE = 0.25;
 const DEBOUNCE_VIEWPORT_MS = 100;
 
+// Le référentiel d'identité ne fournit pas de région ni d'arrondissement.
+// On les reconstruit à partir du département et du code postal, sans modifier
+// les données sources. Paris est détaillé par arrondissement (le code postal
+// 75001…75020 est stable et compréhensible pour les familles).
+const REGION_PAR_DEPARTEMENT = {
+  Ain: "Auvergne-Rhône-Alpes", Allier: "Auvergne-Rhône-Alpes", Ardèche: "Auvergne-Rhône-Alpes", Cantal: "Auvergne-Rhône-Alpes", Drôme: "Auvergne-Rhône-Alpes", Isère: "Auvergne-Rhône-Alpes", Loire: "Auvergne-Rhône-Alpes", "Haute-Loire": "Auvergne-Rhône-Alpes", "Puy-de-Dôme": "Auvergne-Rhône-Alpes", Rhône: "Auvergne-Rhône-Alpes", Savoie: "Auvergne-Rhône-Alpes", "Haute-Savoie": "Auvergne-Rhône-Alpes",
+  Côte: "Bourgogne-Franche-Comté", "Côte-d'Or": "Bourgogne-Franche-Comté", Doubs: "Bourgogne-Franche-Comté", Jura: "Bourgogne-Franche-Comté", Nièvre: "Bourgogne-Franche-Comté", "Haute-Saône": "Bourgogne-Franche-Comté", Saône: "Bourgogne-Franche-Comté", "Saône-et-Loire": "Bourgogne-Franche-Comté", Territoire: "Bourgogne-Franche-Comté", "Territoire de Belfort": "Bourgogne-Franche-Comté", Yonne: "Bourgogne-Franche-Comté",
+  "Côtes-d'Armor": "Bretagne", Finistère: "Bretagne", Ille: "Bretagne", "Ille-et-Vilaine": "Bretagne", Morbihan: "Bretagne",
+  Cher: "Centre-Val de Loire", "Eure-et-Loir": "Centre-Val de Loire", Indre: "Centre-Val de Loire", "Indre-et-Loire": "Centre-Val de Loire", Loir: "Centre-Val de Loire", "Loir-et-Cher": "Centre-Val de Loire", Loiret: "Centre-Val de Loire",
+  "Corse-du-Sud": "Corse", "Haute-Corse": "Corse",
+  Ardennes: "Grand Est", Aube: "Grand Est", Marne: "Grand Est", "Haute-Marne": "Grand Est", Meurthe: "Grand Est", "Meurthe-et-Moselle": "Grand Est", Meuse: "Grand Est", Moselle: "Grand Est", Bas: "Grand Est", "Bas-Rhin": "Grand Est", Haut: "Grand Est", "Haut-Rhin": "Grand Est", Vosges: "Grand Est",
+  "Paris": "Île-de-France", "Seine-et-Marne": "Île-de-France", Yvelines: "Île-de-France", Essonne: "Île-de-France", "Hauts-de-Seine": "Île-de-France", "Seine-Saint-Denis": "Île-de-France", "Val-de-Marne": "Île-de-France", "Val-d'Oise": "Île-de-France",
+  Calvados: "Normandie", Eure: "Normandie", Manche: "Normandie", Orne: "Normandie", "Seine-Maritime": "Normandie",
+  Charente: "Nouvelle-Aquitaine", "Charente-Maritime": "Nouvelle-Aquitaine", Corrèze: "Nouvelle-Aquitaine", Creuse: "Nouvelle-Aquitaine", Dordogne: "Nouvelle-Aquitaine", Gironde: "Nouvelle-Aquitaine", Landes: "Nouvelle-Aquitaine", "Lot-et-Garonne": "Nouvelle-Aquitaine", "Pyrénées-Atlantiques": "Nouvelle-Aquitaine", "Deux-Sèvres": "Nouvelle-Aquitaine", Vienne: "Nouvelle-Aquitaine", "Haute-Vienne": "Nouvelle-Aquitaine",
+  Ariège: "Occitanie", Aude: "Occitanie", Aveyron: "Occitanie", Gard: "Occitanie", "Haute-Garonne": "Occitanie", Gers: "Occitanie", Hérault: "Occitanie", Lot: "Occitanie", Lozère: "Occitanie", "Hautes-Pyrénées": "Occitanie", "Pyrénées-Orientales": "Occitanie", Tarn: "Occitanie", "Tarn-et-Garonne": "Occitanie",
+  "Loire-Atlantique": "Pays de la Loire", Maine: "Pays de la Loire", "Maine-et-Loire": "Pays de la Loire", Mayenne: "Pays de la Loire", Sarthe: "Pays de la Loire", Vendée: "Pays de la Loire",
+  "Alpes-de-Haute-Provence": "Provence-Alpes-Côte d'Azur", "Hautes-Alpes": "Provence-Alpes-Côte d'Azur", "Alpes-Maritimes": "Provence-Alpes-Côte d'Azur", Bouches: "Provence-Alpes-Côte d'Azur", "Bouches-du-Rhône": "Provence-Alpes-Côte d'Azur", Var: "Provence-Alpes-Côte d'Azur", Vaucluse: "Provence-Alpes-Côte d'Azur",
+  Guadeloupe: "Guadeloupe", Martinique: "Martinique", Guyane: "Guyane", "La Réunion": "La Réunion", Mayotte: "Mayotte", "Saint-Martin": "Saint-Martin", "Saint-Barthélémy": "Saint-Barthélémy", "St-Pierre-et-Miquelon": "St-Pierre-et-Miquelon", "Nouvelle Calédonie": "Nouvelle Calédonie",
+};
+function nomRegion(departement) { return REGION_PAR_DEPARTEMENT[departement] ?? departement; }
+function nomQuartierParis(etablissement) {
+  const code = String(etablissement.code_postal ?? "");
+  const arrondissement = Number(code.slice(3));
+  return etablissement.departement === "Paris" && arrondissement >= 1 && arrondissement <= 20
+    ? `${arrondissement}e arrondissement`
+    : "Paris (arrondissement non précisé)";
+}
+
 // Suivi GoatCounter : un seul événement "carte-interaction" par visite, à la
 // première interaction réelle avec la carte (clic sur un marqueur ou une
 // bulle département). sessionStorage (pas localStorage) : on veut mesurer
@@ -153,6 +181,19 @@ function RecentrageSurCommune({ commune, etablissements }) {
   return null;
 }
 
+function RecentrageSurNavigation({ navigation, sites }) {
+  const map = useMap();
+  useEffect(() => {
+    if (navigation.niveau === "regions") return;
+    const points = sites.filter((s) => Number.isFinite(s.latitude) && Number.isFinite(s.longitude));
+    if (!points.length) return;
+    map.flyToBounds(L.latLngBounds(points.map((s) => [s.latitude, s.longitude])), {
+      padding: [48, 48], maxZoom: navigation.niveau === "departements" ? 8 : 12, duration: 0.6,
+    });
+  }, [navigation, sites, map]);
+  return null;
+}
+
 function CadrageInitial({ bounds }) {
   const map = useMap();
   const [fait, setFait] = useState(false);
@@ -246,6 +287,7 @@ export default function CarteEtablissements() {
   const setFiltre = useEtablissementsStore((s) => s.setFiltre);
 
   const [retourVersion, setRetourVersion] = useState(0);
+  const [navigation, setNavigation] = useState({ niveau: "regions", valeur: null, parent: null });
   const [zoomActuel, setZoomActuel] = useState(ZOOM_FRANCE);
   const [viewportBounds, setViewportBounds] = useState(null);
 
@@ -274,21 +316,34 @@ export default function CarteEtablissements() {
     });
   }, [etablissements]);
 
-  const sitesParDepartement = useMemo(() => {
+  const agreger = useCallback((sitesSource, clef, libelle) => {
     const groupes = new Map();
-    for (const site of sites) {
-      if (!site.departement) continue;
-      if (!groupes.has(site.departement)) groupes.set(site.departement, []);
-      groupes.get(site.departement).push(site);
+    for (const site of sitesSource) {
+      const cle = clef(site);
+      if (!cle) continue;
+      if (!groupes.has(cle)) groupes.set(cle, []);
+      groupes.get(cle).push(site);
     }
     return Array.from(groupes.entries()).map(([nom, sitesGroupe]) => {
       const lat = sitesGroupe.reduce((a, s) => a + s.latitude, 0) / sitesGroupe.length;
       const lon = sitesGroupe.reduce((a, s) => a + s.longitude, 0) / sitesGroupe.length;
       const ipsConnus = sitesGroupe.map((s) => s.ipsMoyen).filter((v) => v != null);
       const count = sitesGroupe.reduce((a, s) => a + s.membres.length, 0);
-      return { nom, latitude: lat, longitude: lon, count, ipsMoyen: ipsConnus.length ? ipsConnus.reduce((a, b) => a + b, 0) / ipsConnus.length : null };
+      return { nom: libelle ? libelle(nom) : nom, valeur: nom, latitude: lat, longitude: lon, count, ipsMoyen: ipsConnus.length ? ipsConnus.reduce((a, b) => a + b, 0) / ipsConnus.length : null };
     });
-  }, [sites]);
+  }, []);
+
+  const regions = useMemo(() => agreger(sites, s => nomRegion(s.departement)), [sites, agreger]);
+  const regionSites = useMemo(() => navigation.niveau === "departements" ? sites.filter(s => nomRegion(s.departement) === navigation.valeur) : sites, [sites, navigation]);
+  const departements = useMemo(() => agreger(regionSites, s => s.departement), [regionSites, agreger]);
+  const parisSites = useMemo(() => sites.filter(s => s.departement === "Paris"), [sites]);
+  const quartiersParis = useMemo(() => agreger(parisSites, s => nomQuartierParis(s.membres[0])), [parisSites, agreger]);
+  const sitesNavigues = useMemo(() => {
+    if (navigation.niveau === "quartiers") return parisSites.filter(s => nomQuartierParis(s.membres[0]) === navigation.valeur);
+    if (navigation.niveau === "etablissements" && navigation.parent === "Paris") return parisSites.filter(s => navigation.quartier ? nomQuartierParis(s.membres[0]) === navigation.quartier : true);
+    if (navigation.niveau === "etablissements") return sites.filter(s => s.departement === navigation.valeur);
+    return sites;
+  }, [navigation, sites, parisSites]);
 
   const boundsFrance = BOUNDS_METROPOLE;
 
@@ -298,14 +353,15 @@ export default function CarteEtablissements() {
   );
 
   const etablissementSelectionne = etablissements.find((e) => e.code_uai === selectionId) ?? null;
-  const vueEnsemble = !filtres.commune && !filtres.rechercheUai && filtres.departement === "Tous" && zoomActuel < SEUIL_ZOOM_ECLATEMENT;
+  const vueEnsemble = !filtres.commune && !filtres.rechercheUai && navigation.niveau !== "etablissements";
+  const zonesAffichees = navigation.niveau === "regions" ? regions : navigation.niveau === "departements" ? departements : navigation.niveau === "quartiers" ? quartiersParis : [];
   const sitesVisibles = useMemo(() => {
-    if (vueEnsemble || !viewportBounds) return sites;
-    return sites.filter((site) => {
+    if (vueEnsemble || !viewportBounds) return sitesNavigues;
+    return sitesNavigues.filter((site) => {
       if (site.membres.some((m) => m.code_uai === selectionId)) return true;
       return viewportBounds.contains([site.latitude, site.longitude]);
     });
-  }, [sites, viewportBounds, vueEnsemble, selectionId]);
+  }, [sitesNavigues, viewportBounds, vueEnsemble, selectionId]);
   const handleViewportChange = useCallback((bounds) => setViewportBounds(bounds), []);
 
   return (
@@ -315,13 +371,20 @@ export default function CarteEtablissements() {
 
         {vueEnsemble ? (
           <MarkerClusterGroup key="departements" maxClusterRadius={estMobile ? 72 : 84} iconCreateFunction={creerIconeCluster}>
-          {sitesParDepartement.map((dept) => (
-            <Marker key={dept.nom} nbEtablissements={dept.count} ips={dept.ipsMoyen} position={[dept.latitude, dept.longitude]} icon={creerIconeDepartement(dept, estMobile)} eventHandlers={{ click: () => { suivreInteractionCarte(); setFiltre("departement", dept.nom); } }}>
+          {zonesAffichees.map((zone) => (
+            <Marker key={zone.nom} nbEtablissements={zone.count} ips={zone.ipsMoyen} position={[zone.latitude, zone.longitude]} icon={creerIconeDepartement(zone, estMobile)} eventHandlers={{ click: () => {
+              suivreInteractionCarte();
+              if (navigation.niveau === "regions") setNavigation({ niveau: "departements", valeur: zone.valeur, parent: null });
+              else if (navigation.niveau === "departements") {
+                if (zone.valeur === "Paris") setNavigation({ niveau: "quartiers", valeur: "Paris", parent: zone.valeur });
+                else { setFiltre("departement", zone.valeur); setNavigation({ niveau: "etablissements", valeur: zone.valeur, parent: navigation.valeur }); }
+              } else if (navigation.niveau === "quartiers") setNavigation({ niveau: "etablissements", valeur: "Paris", parent: "Paris", quartier: zone.valeur });
+            } }}>
               <Tooltip direction="top" offset={[0, -12]} opacity={1}>
                 <div className="font-body text-sm">
-                  <p className="font-semibold text-encre-950">{dept.nom}</p>
-                  <p className="text-encre-600">{dept.count} établissements</p>
-                  {dept.ipsMoyen != null && <p className="text-encre-400">IPS moyen&nbsp;: <span className="font-mono">{Math.round(dept.ipsMoyen)}</span></p>}
+                  <p className="font-semibold text-encre-950">{zone.nom}</p>
+                  <p className="text-encre-600">{zone.count} établissements</p>
+                  {zone.ipsMoyen != null && <p className="text-encre-400">IPS moyen&nbsp;: <span className="font-mono">{Math.round(zone.ipsMoyen)}</span></p>}
                 </div>
               </Tooltip>
             </Marker>
@@ -351,6 +414,7 @@ export default function CarteEtablissements() {
 
         <CadrageInitial bounds={boundsFrance} />
         <RecentrageSurDepartement retourVersion={retourVersion} departement={filtres.departement} sitesDuDepartement={sitesDuDepartementFiltre} />
+        <RecentrageSurNavigation navigation={navigation} sites={navigation.niveau === "regions" ? sites : navigation.niveau === "departements" ? regionSites : navigation.niveau === "quartiers" ? parisSites : sitesNavigues} />
         <RecentrageSurCommune commune={filtres.commune} etablissements={etablissements} />
         <RecentrerSurSelection etablissement={etablissementSelectionne} />
         <SuiviZoom onZoomChange={setZoomActuel} />
@@ -365,6 +429,7 @@ export default function CarteEtablissements() {
       </div>
 
       <div className="absolute bottom-12 left-3 z-[1000] flex max-w-[calc(100%-5rem)] gap-2 md:left-[340px]">
+        {navigation.niveau !== "regions" && <button onClick={() => { setFiltre("departement", "Tous"); setNavigation(navigation.niveau === "etablissements" ? (navigation.parent === "Paris" ? { niveau: "quartiers", valeur: "Paris", parent: "Paris" } : { niveau: "departements", valeur: navigation.parent, parent: null }) : navigation.niveau === "quartiers" ? { niveau: "departements", valeur: "Île-de-France", parent: null } : { niveau: "regions", valeur: null, parent: null }); }} className="rounded-full bg-sable-50 px-3 py-2 text-xs font-semibold text-encre-950 shadow-panel">← Niveau précédent</button>}
         <button onClick={() => { setFiltre("departement", "Tous"); setRetourVersion(v => v + 1); }} className="rounded-full bg-sable-50 px-3 py-2 text-xs font-semibold text-encre-950 shadow-panel">Vue France</button>
         <select aria-label="Afficher un territoire ultramarin" value={["Guadeloupe", "Martinique", "Guyane", "La Réunion", "Mayotte", "Saint-Martin", "Saint-Barthélémy", "St-Pierre-et-Miquelon", "Nouvelle Calédonie"].includes(filtres.departement) ? filtres.departement : ""} onChange={e => { setFiltre("departement", e.target.value || "Tous"); setRetourVersion(v => v + 1); }} className="min-w-0 max-w-44 rounded-full bg-sable-50 px-3 py-2 text-sm text-encre-950 shadow-panel">
           <option value="">Outre-mer</option>
