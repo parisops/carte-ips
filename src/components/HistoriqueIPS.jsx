@@ -3,7 +3,7 @@ import { useHistoriqueIPS } from "../hooks/useEtablissementsStore";
 import { couleurDegradeIPS, IPS_MIN, IPS_MAX } from "../utils/ipsColor";
 import InfoBulle from "./InfoBulle";
 
-const ANNEE_RUPTURE_METHODO = 2022;
+import { preparerHistoriqueIPS, ANNEE_RUPTURE_METHODO } from "../utils/historiqueIPS";
 
 function PointPersonnalise({ cx, cy, payload }) {
   return (
@@ -11,24 +11,12 @@ function PointPersonnalise({ cx, cy, payload }) {
   );
 }
 
-/**
- * Historique de l'IPS d'un établissement au fil des années, sous forme de
- * mini-graphique en ligne — complète la valeur ponctuelle affichée dans
- * GaugeIPS avec une lecture de tendance (établissement en hausse/baisse/
- * stable), impossible à percevoir avec un seul chiffre.
- *
- * Chargement à la demande : `historique_ips.json` pèse plusieurs Mo, donc
- * n'est récupéré qu'au premier clic sur un établissement (cf.
- * chargerHistoriqueSiBesoin() dans le store), jamais au démarrage de la carte.
- */
-export default function HistoriqueIPS({ codeUai, valeurActuelle }) {
-  const points = useHistoriqueIPS(codeUai);
-
+export default function HistoriqueIPS({ codeUai }) {
+  const historique = useHistoriqueIPS(codeUai);
+  const { points, rupture, ecart, debutComparaison, finComparaison } = preparerHistoriqueIPS(historique);
   if (points.length < 2) return null;
-
   const premiereAnnee = points[0].annee;
-  const derniereAnnee = points[points.length - 1].annee;
-  const ecart = valeurActuelle != null ? valeurActuelle - points[0].ips : null;
+  const derniereAnnee = points.at(-1).annee;
 
   return (
     <div className="mt-4 border-t border-sable-200 pt-3">
@@ -40,12 +28,10 @@ export default function HistoriqueIPS({ codeUai, valeurActuelle }) {
         />
         {ecart != null && (
           <span
-            className={`ml-auto font-mono text-xs font-semibold ${
-              ecart > 0 ? "text-tableau-700" : ecart < 0 ? "text-craie-600" : "text-encre-400"
-            }`}
+            className="ml-auto font-mono text-xs font-semibold text-encre-600"
           >
             {ecart > 0 ? "+" : ""}
-            {ecart.toFixed(1)} pts
+            {ecart.toFixed(1)} pts ({debutComparaison}–{finComparaison})
           </span>
         )}
       </p>
@@ -65,24 +51,24 @@ export default function HistoriqueIPS({ codeUai, valeurActuelle }) {
             formatter={(v) => [v, "IPS"]}
             labelFormatter={(annee) => `Rentrée ${annee}`}
           />
-          <Line
+          {["avant", "depuis"].map(periode => <Line
+            key={periode}
             type="monotone"
-            dataKey="ips"
+            dataKey={periode}
             stroke="#2F5A8C"
             strokeWidth={2}
             dot={<PointPersonnalise />}
             activeDot={{ r: 5 }}
             isAnimationActive={false}
-          />
+          />)}
         </LineChart>
       </ResponsiveContainer>
 
-      {points.some((p) => p.annee < ANNEE_RUPTURE_METHODO) &&
-        points.some((p) => p.annee >= ANNEE_RUPTURE_METHODO) && (
-          <p className="mt-1 font-body text-[10px] text-encre-400">
-            Rupture méthodologique en {ANNEE_RUPTURE_METHODO} — voir l'info-bulle ci-dessus.
-          </p>
-        )}
+      {rupture && (
+        <p className="mt-2 text-xs leading-relaxed text-encre-600">
+          Changement de méthode en {ANNEE_RUPTURE_METHODO} : les deux périodes sont séparées et aucun écart n’est calculé entre elles.
+        </p>
+      )}
     </div>
   );
 }

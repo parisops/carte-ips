@@ -2,11 +2,14 @@ import { create } from "zustand";
 import { joinByUai } from "../utils/joinData";
 import { trackEvent } from "../utils/analytics";
 
-const URL_IDENTITE = `${import.meta.env.BASE_URL}data/identite.json`;
-const URL_INDICATEURS = `${import.meta.env.BASE_URL}data/indicateurs.json`;
-const URL_RESULTATS = `${import.meta.env.BASE_URL}data/resultats.json`;
-const URL_HISTORIQUE = `${import.meta.env.BASE_URL}data/historique_ips.json`;
-const URL_HISTORIQUE_RESULTATS = `${import.meta.env.BASE_URL}data/historique_resultats.json`;
+const URL_RUNTIME = `${import.meta.env.BASE_URL}data/runtime/`;
+let initialisation;
+const chargementsZones = new Map();
+async function lireJSON(fichier) {
+  const reponse = await fetch(`${URL_RUNTIME}${fichier}.json`);
+  if (!reponse.ok) throw new Error(`HTTP ${reponse.status}`);
+  return reponse.json();
+}
 
 const FILTRES_PAR_DEFAUT = {
   types: { École: true, Collège: true, Lycée: true },
@@ -14,6 +17,8 @@ const FILTRES_PAR_DEFAUT = {
   dispositifs: { ulis: false, segpa: false, rep: false },
   ipsMin: 0,
   recherche: "",
+  commune: null,
+  rechercheUai: null,
   departement: "Tous",
   departementsDisponibles: [],
 };
@@ -24,101 +29,62 @@ export const useEtablissementsStore = create((set, get) => ({
   indicateursCharges: false,
   erreurChargement: null,
   etablissementSelectionneId: null,
-  resultatsCharges: false,
   historique: {},
   historiqueCharge: false,
-  historiqueEnErreur: false,
   historiqueResultats: {},
   historiqueResultatsCharge: false,
-  historiqueResultatsEnErreur: false,
   aInteragi: false,
   bornesIps: [50, 170],
   bornesEffectif: [0, 2000],
 
   filtres: FILTRES_PAR_DEFAUT,
 
-  init: async () => {
-    try {
-      const identite = await fetch(URL_IDENTITE).then((r) => {
-        if (!r.ok) throw new Error(`identite.json : HTTP ${r.status}`);
-        return r.json();
-      });
-
-      const departementsDisponibles = Array.from(
-        new Set(identite.map((e) => e.departement).filter(Boolean))
-      ).sort();
-
-      set({
-        etablissements: identite,
-        isLoaded: true,
-        filtres: { ...FILTRES_PAR_DEFAUT, departementsDisponibles },
-      });
-
-      const indicateurs = await fetch(URL_INDICATEURS).then((r) => {
-        if (!r.ok) throw new Error(`indicateurs.json : HTTP ${r.status}`);
-        return r.json();
-      });
-
-      const fusion = joinByUai(identite, indicateurs);
-
-      const ipsValues = fusion.map((e) => e.ips_etablissement).filter((v) => v != null);
-      const effectifValues = fusion.map((e) => e.effectif_total).filter((v) => v != null);
-
-      const ipsMin = ipsValues.length ? Math.min(...ipsValues) : 0;
-      const ipsMax = ipsValues.length ? Math.max(...ipsValues) : 200;
-      const effectifMin = effectifValues.length ? Math.min(...effectifValues) : 0;
-      const effectifMax = effectifValues.length ? Math.max(...effectifValues) : 2000;
-      const ipsRangeArrondi = [Math.floor(ipsMin / 10) * 10, Math.ceil(ipsMax / 10) * 10];
-
-      set((state) => ({
-        etablissements: fusion,
-        indicateursCharges: true,
-        bornesIps: ipsRangeArrondi,
-        bornesEffectif: [effectifMin, effectifMax],
-        filtres: { ...state.filtres, ipsMin: ipsRangeArrondi[0] },
-      }));
-    } catch (err) {
-      set({ erreurChargement: err.message ?? "Erreur de chargement des données" });
-    }
+  zonesChargees: {},
+  zonesEnErreur: {},
+  init: () => {
+    if (get().isLoaded) return Promise.resolve();
+    if (initialisation) return initialisation;
+    set({ erreurChargement: null });
+    initialisation = (async () => {
+      try {
+        const { champs, lignes } = await lireJSON("catalogue");
+        const etablissements = lignes.map(ligne => Object.fromEntries(champs.map((cle, i) => [cle, ligne[i]])));
+        const ips = etablissements.map(e => e.ips_etablissement).filter(v => v != null);
+        const effectifs = etablissements.map(e => e.effectif_total).filter(v => v != null);
+        const bornesIps = ips.length ? [Math.floor(Math.min(...ips) / 10) * 10, Math.ceil(Math.max(...ips) / 10) * 10] : [50, 170];
+        set(state => ({
+          etablissements, isLoaded: true, indicateursCharges: true, bornesIps,
+          bornesEffectif: effectifs.length ? [Math.min(...effectifs), Math.max(...effectifs)] : [0, 2000],
+          filtres: { ...state.filtres, ipsMin: bornesIps[0], departementsDisponibles: [...new Set(etablissements.map(e => e.departement).filter(Boolean))].sort() },
+        }));
+      } catch (err) {
+        set({ erreurChargement: err.message ?? "Erreur de chargement des données" });
+      } finally { initialisation = null; }
+    })();
+    return initialisation;
   },
 
-  chargerResultatsSiBesoin: async () => {
-    if (get().resultatsCharges) return;
-    set({ resultatsCharges: true });
-    try {
-      const resultats = await fetch(URL_RESULTATS).then((r) => r.json());
-      set((state) => ({ etablissements: joinByUai(state.etablissements, resultats) }));
-    } catch {
-      set({ resultatsCharges: false });
-    }
-  },
-
-  chargerHistoriqueSiBesoin: async () => {
-    if (get().historiqueCharge) return;
-    set({ historiqueCharge: true });
-    try {
-      const historique = await fetch(URL_HISTORIQUE).then((r) => {
-        if (!r.ok) throw new Error(`historique_ips.json : HTTP ${r.status}`);
-        return r.json();
-      });
-      set({ historique, historiqueEnErreur: false });
-    } catch {
-      set({ historiqueCharge: false, historiqueEnErreur: true });
-    }
-  },
-
-  chargerHistoriqueResultatsSiBesoin: async () => {
-    if (get().historiqueResultatsCharge) return;
-    set({ historiqueResultatsCharge: true });
-    try {
-      const historiqueResultats = await fetch(URL_HISTORIQUE_RESULTATS).then((r) => {
-        if (!r.ok) throw new Error(`historique_resultats.json : HTTP ${r.status}`);
-        return r.json();
-      });
-      set({ historiqueResultats, historiqueResultatsEnErreur: false });
-    } catch {
-      set({ historiqueResultatsCharge: false, historiqueResultatsEnErreur: true });
-    }
+  chargerDetailsSiBesoin: (codeUai) => {
+    const zone = codeUai.slice(0, 3);
+    if (get().zonesChargees[zone]) return Promise.resolve();
+    if (chargementsZones.has(zone)) return chargementsZones.get(zone);
+    set(state => ({ zonesEnErreur: { ...state.zonesEnErreur, [zone]: false } }));
+    const chargement = (async () => {
+      try {
+        const data = await lireJSON(zone);
+        set(state => ({
+          etablissements: joinByUai(state.etablissements, data.etablissements),
+          historique: { ...state.historique, ...data.historique },
+          historiqueResultats: { ...state.historiqueResultats, ...data.historiqueResultats },
+          historiqueCharge: true, historiqueResultatsCharge: true,
+          zonesChargees: { ...state.zonesChargees, [zone]: true },
+        }));
+      } catch {
+        set(state => ({ zonesEnErreur: { ...state.zonesEnErreur, [zone]: true } }));
+      } finally { chargementsZones.delete(zone); }
+    })();
+    chargementsZones.set(zone, chargement);
+    return chargement;
   },
 
   setFiltre: (chemin, valeur) =>
@@ -131,6 +97,11 @@ export const useEtablissementsStore = create((set, get) => ({
         filtres[parts[0]][parts[1]] = valeur;
       }
 
+      if (chemin === "recherche" || chemin === "departement") {
+        filtres.commune = null;
+        filtres.rechercheUai = null;
+        if (chemin === "departement") filtres.recherche = "";
+      }
       let interactionDetectee = false;
       if (chemin === "departement" && valeur !== "Tous") {
         trackEvent("departement-selectionne", valeur);
@@ -146,11 +117,12 @@ export const useEtablissementsStore = create((set, get) => ({
         interactionDetectee = true;
       }
 
-      return { filtres, aInteragi: state.aInteragi || interactionDetectee };
+      return { filtres, etablissementSelectionneId: ["recherche", "departement"].includes(chemin) ? null : state.etablissementSelectionneId, aInteragi: state.aInteragi || interactionDetectee };
     }),
 
   resetFiltres: () =>
     set((state) => ({
+      etablissementSelectionneId: null,
       filtres: {
         ...FILTRES_PAR_DEFAUT,
         ipsMin: state.bornesIps[0],
@@ -160,37 +132,33 @@ export const useEtablissementsStore = create((set, get) => ({
 
   selectionnerEtablissement: (code_uai) => {
     const etablissement = get().etablissements.find((e) => e.code_uai === code_uai);
+    if (!etablissement) return;
     if (etablissement) {
       trackEvent("etablissement-selectionne", etablissement.type_etablissement);
     }
     set({ etablissementSelectionneId: code_uai, aInteragi: true });
-    get().chargerResultatsSiBesoin();
-    get().chargerHistoriqueSiBesoin();
-    get().chargerHistoriqueResultatsSiBesoin();
+    return get().chargerDetailsSiBesoin(code_uai);
   },
   fermerPanneau: () => set({ etablissementSelectionneId: null }),
 
-  /**
-   * Applique une suggestion d'autocomplétion (cf. useSuggestionsRecherche) :
-   * une commune remplit la recherche avec son nom ET sélectionne son premier
-   * établissement (alphabétique) pour centrer la carte dessus (réutilise le
-   * recentrage déjà déclenché par selectionnerEtablissement — pas besoin
-   * d'une logique de centrage dédiée à la commune). Un établissement remplit
-   * la recherche avec son nom et se sélectionne directement.
-   */
   selectionnerSuggestion: (suggestion) => {
-    if (suggestion.type === "commune") {
-      const premier = get()
-        .etablissements.filter((e) => e.commune === suggestion.label)
-        .sort((a, b) => a.nom_etablissement.localeCompare(b.nom_etablissement))[0];
-      get().setFiltre("recherche", suggestion.label);
-      if (premier) get().selectionnerEtablissement(premier.code_uai);
-      trackEvent("suggestion-recherche-choisie", "commune");
-    } else {
-      get().setFiltre("recherche", suggestion.label);
-      get().selectionnerEtablissement(suggestion.codeUai);
-      trackEvent("suggestion-recherche-choisie", "etablissement");
-    }
+    set(state => ({
+      etablissementSelectionneId: null,
+      aInteragi: true,
+      filtres: {
+        ...state.filtres,
+        ...(suggestion.type === "etablissement" ? {
+          types: FILTRES_PAR_DEFAUT.types, statuts: FILTRES_PAR_DEFAUT.statuts,
+          dispositifs: FILTRES_PAR_DEFAUT.dispositifs, ipsMin: state.bornesIps[0],
+        } : {}),
+        recherche: suggestion.label,
+        departement: "Tous",
+        commune: suggestion.type === "commune" ? { nom: suggestion.label, departement: suggestion.departement } : null,
+        rechercheUai: suggestion.type === "etablissement" ? suggestion.codeUai : null,
+      },
+    }));
+    if (suggestion.type === "etablissement") get().selectionnerEtablissement(suggestion.codeUai);
+    trackEvent("suggestion-recherche-choisie", suggestion.type);
   },
 }));
 
@@ -216,7 +184,11 @@ export function useEtablissementsFiltres() {
   const etablissements = useEtablissementsStore((s) => s.etablissements);
   const filtres = useEtablissementsStore((s) => s.filtres);
 
-  return useMemo(() => {
+  return useMemo(() => filtrerEtablissements(etablissements, filtres), [etablissements, filtres]);
+}
+
+export function filtrerEtablissements(etablissements, filtres) {
+
     const motsRecherche = normaliserPourRecherche(filtres.recherche).split(" ").filter(Boolean);
 
     return etablissements.filter((e) => {
@@ -233,7 +205,9 @@ export function useEtablissementsFiltres() {
       const ips = e.ips_etablissement;
       if (ips != null && ips < filtres.ipsMin) return false;
 
-      if (motsRecherche.length > 0) {
+      if (filtres.commune && (e.commune !== filtres.commune.nom || e.departement !== filtres.commune.departement)) return false;
+      if (filtres.rechercheUai && e.code_uai !== filtres.rechercheUai) return false;
+      if (!filtres.commune && !filtres.rechercheUai && motsRecherche.length > 0) {
         const cible = normaliserPourRecherche(
           `${e.nom_etablissement} ${e.commune} ${e.code_postal ?? ""} ${e.code_uai ?? ""}`
         );
@@ -242,25 +216,13 @@ export function useEtablissementsFiltres() {
 
       return true;
     });
-  }, [etablissements, filtres]);
+
+
 }
 
-// Plafond de sécurité : le panneau n'affiche que 5 suggestions à la fois
-// (cf. FiltresPanel.jsx, chargement au scroll), mais on calcule un peu plus
-// large pour permettre ce scroll incrémental sans jamais générer une liste
-// démesurée si la recherche est très courte (ex: une seule lettre).
+// Limite la liste d’autocomplétion ; les résultats de la commune restent complets.
 const MAX_SUGGESTIONS_CALCULEES = 30;
 
-/**
- * Suggestions d'autocomplétion : communes correspondantes d'abord (triées
- * alphabétiquement), puis établissements correspondants (triés
- * alphabétiquement) — soit par leur propre nom, soit parce qu'ils sont
- * situés dans une commune déjà trouvée (permet à "saint cloud" de proposer
- * aussi les établissements de Saint-Cloud, pas seulement la ville).
- * Cherche dans TOUS les établissements chargés, indépendamment des autres
- * filtres actifs (type, statut, IPS...). Le composant appelant gère
- * l'affichage progressif (5 par 5) — cf. FiltresPanel.jsx.
- */
 export function useSuggestionsRecherche() {
   const etablissements = useEtablissementsStore((s) => s.etablissements);
   const filtres = useEtablissementsStore((s) => s.filtres);
@@ -274,21 +236,18 @@ export function useSuggestionsRecherche() {
       return motsRecherche.every((mot) => cible.includes(mot));
     };
 
-    const communesTrouvees = Array.from(
-      new Set(etablissements.map((e) => e.commune).filter(Boolean))
-    )
-      .filter((commune) => correspond(commune))
-      .sort((a, b) => a.localeCompare(b));
-
-    const suggestionsCommunes = communesTrouvees.map((commune) => ({
-      type: "commune",
-      cle: `commune-${commune}`,
-      label: commune,
-    }));
-
-    const communesTrouveesSet = new Set(communesTrouvees);
+    const communes = new Map();
+    for (const e of etablissements) {
+      if (!e.commune) continue;
+      const cle = `${e.departement}|${e.commune}`;
+      if (correspond(`${e.commune} ${e.code_postal ?? ""}`)) communes.set(cle, { type: "commune", cle, label: e.commune, departement: e.departement });
+    }
+    const terme = normaliserPourRecherche(filtres.recherche);
+    const suggestionsCommunes = [...communes.values()].sort((a, b) =>
+      Number(normaliserPourRecherche(b.label) === terme) - Number(normaliserPourRecherche(a.label) === terme) || a.label.localeCompare(b.label)
+    );
     const etablissementsTrouves = etablissements
-      .filter((e) => correspond(e.nom_etablissement) || communesTrouveesSet.has(e.commune))
+      .filter(e => correspond(`${e.nom_etablissement} ${e.commune} ${e.code_postal ?? ""} ${e.code_uai}`))
       .sort((a, b) => a.nom_etablissement.localeCompare(b.nom_etablissement));
 
     const suggestionsEtablissements = etablissementsTrouves.map((e) => ({

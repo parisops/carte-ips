@@ -1,17 +1,5 @@
 import { X } from "lucide-react";
 
-/**
- * Mentions légales + politique de confidentialité, dans une modale plutôt
- * qu'une route dédiée (l'app n'a pas de routeur — pas la peine d'en ajouter
- * un pour une seule page statique).
- *
- * Éditeur non professionnel (LCEN art. 6-III-1 et 6-III-2) : pour un site
- * personnel/non commercial, la loi autorise à ne PAS publier son identité
- * civile, à condition qu'elle reste accessible aux autorités judiciaires
- * via l'hébergeur — ce qui est automatiquement le cas ici, GitHub disposant
- * déjà des informations du titulaire du compte/repo. Rien à compléter avant
- * mise en ligne : aucune donnée personnelle n'apparaît dans ce composant.
- */
 export default function MentionsLegales({ onClose }) {
   return (
     <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-encre-950/40 p-4">
@@ -61,9 +49,7 @@ export default function MentionsLegales({ onClose }) {
           <section>
             <h3 className="mb-1 font-semibold text-encre-950">Contact</h3>
             <p>
-              Pour toute question sur ce site, ouvrir une "issue" sur le
-              dépôt GitHub du projet — ce canal ne nécessite de communiquer
-              aucune information personnelle au-delà d'un pseudonyme GitHub.
+              Pour toute question, utilisez le bouton de contact de Trajectoires. Le nom et l’adresse email sont facultatifs ; une adresse email permet de vous répondre.
             </p>
           </section>
 
@@ -86,21 +72,17 @@ export default function MentionsLegales({ onClose }) {
               d'appareil) et suivre quelques événements d'usage anonymes
               (ex : filtre utilisé, établissement consulté). Ces deux outils
               ne déposent aucun cookie et ne stockent pas votre adresse IP
-              complète : ils n'entrent pas dans le champ du consentement
-              préalable exigé par la CNIL pour les traceurs, et ne sont donc
-              pas soumis à un bandeau de consentement.
+              complète selon leur fonctionnement annoncé. La mesure d’audience est distincte des messages envoyés volontairement via le formulaire de contact.
             </p>
           </section>
 
           <section>
-            <h3 className="mb-1 font-semibold text-encre-950">Vos droits</h3>
+            <h3 className="mb-1 font-semibold text-encre-950">Formulaire de contact</h3>
             <p>
-              Ce site ne collecte aucune donnée personnelle identifiable :
-              pas de compte, pas de formulaire, pas de cookie de suivi. La
-              mesure d'audience (ci-dessus) est agrégée et anonymisée à la
-              source. En l'absence de traitement de données personnelles, il
-              n'y a pas de droit d'accès/rectification/suppression à exercer
-              au sens du RGPD.
+              Lorsque vous envoyez un message, son contenu et les nom et adresse email que vous renseignez sont transmis à FormSubmit, puis à l’éditeur du site, pour traiter votre demande et vous répondre. Évitez d’inclure des informations sensibles ou des informations personnelles sur votre enfant.
+            </p>
+            <p className="mt-2">
+              Pour demander l’accès, la rectification ou la suppression des informations transmises, contactez l’éditeur via ce même formulaire en précisant votre demande.
             </p>
           </section>
         </div>

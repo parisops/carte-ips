@@ -1,5 +1,6 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import { runtimeDataPlugin } from "./scripts/runtime-data.mjs";
 
 // ⚠️ GitHub Pages (project page) sert le site sous
 // https://TON-PSEUDO.github.io/NOM-DU-REPO/ — le `base` doit correspondre
@@ -8,7 +9,7 @@ import react from "@vitejs/plugin-react";
 const REPO_NAME = "carte-ips";
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), runtimeDataPlugin()],
   base: `/${REPO_NAME}/`,
   build: {
     // AJOUT PERF — relève légèrement le seuil d'avertissement de taille de

@@ -118,6 +118,7 @@ export default function BulleAvis() {
                   type="text"
                   value={nom}
                   onChange={(e) => setNom(e.target.value)}
+                  aria-label="Nom (optionnel)"
                   placeholder="Nom (optionnel)"
                   className="w-full rounded-lg border border-sable-200 bg-white px-3 py-2 font-body text-sm text-encre-950 placeholder:text-encre-400 focus:outline-none focus:ring-2 focus:ring-encre-600"
                 />
@@ -125,17 +126,20 @@ export default function BulleAvis() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  aria-label="Adresse email (optionnel, pour une réponse)"
                   placeholder="Adresse email (optionnel, pour une réponse)"
                   className="w-full rounded-lg border border-sable-200 bg-white px-3 py-2 font-body text-sm text-encre-950 placeholder:text-encre-400 focus:outline-none focus:ring-2 focus:ring-encre-600"
                 />
                 <textarea
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
+                  aria-label="Votre message"
                   placeholder="Votre message"
                   required
                   rows={4}
                   className="w-full rounded-lg border border-sable-200 bg-white px-3 py-2 font-body text-sm text-encre-950 placeholder:text-encre-400 focus:outline-none focus:ring-2 focus:ring-encre-600"
                 />
+                <p className="text-xs leading-relaxed text-encre-600">Le message et les coordonnées renseignées sont transmis via FormSubmit pour traiter votre demande.</p>
                 {erreur && (
                   <p className="font-body text-xs text-craie-600">
                     L'envoi a échoué. Merci de réessayer dans un instant.

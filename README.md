@@ -15,10 +15,10 @@ npm install
 npm run dev
 ```
 
-Les données servies par l'app vivent dans `public/data/` (`identite.json`,
-`indicateurs.json`, `resultats.json`, `historique_ips.json`). Elles sont déjà
-générées et prêtes à l'emploi. Pour les régénérer à partir des fichiers sources
-bruts (dans `data-source/`) :
+Les données sources vivent dans `public/data/` et sont transformées au build en
+un catalogue de recherche léger (`dist/data/runtime/catalogue.json`) et en
+blocs détaillés chargés à la demande par zone géographique. Pour régénérer les
+sources à partir des fichiers bruts (dans `data-source/`) :
 
 ```bash
 python3 scripts/prepare_data.py
@@ -31,10 +31,10 @@ data-source/                                # fichiers bruts data.education.gouv
 scripts/
 └── prepare_data.py                         # normalise les sources brutes → public/data/*.json
 public/data/
-├── identite.json                           # code_uai, nom, type, statut, localisation, GPS
+├── identite.json                           # source normalisée (catalogue généré au build)
 ├── indicateurs.json                        # code_uai, IPS, effectifs, inclusivité, pédagogie
 ├── resultats.json                          # code_uai, IVAC (collèges) / IVAL (lycées)
-└── historique_ips.json                     # historique IPS par UAI, chargé à la demande
+└── historique_ips.json                     # historique IPS utilisé pour les blocs détaillés
 src/
 ├── utils/
 │   └── joinData.js                       # joinByUai() — fusion des sources sur code_uai

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { Search, SlidersHorizontal, ChevronDown, X, HelpCircle, MapPin, School } from "lucide-react";
-import { useEtablissementsStore, useSuggestionsRecherche } from "../hooks/useEtablissementsStore";
+import { SlidersHorizontal, ChevronDown, X, HelpCircle } from "lucide-react";
+import { useEtablissementsStore } from "../hooks/useEtablissementsStore";
 import {
   couleurDegradeIPS,
   COULEUR_IPS_INCONNU,
@@ -92,7 +92,7 @@ function LegendeCarte({ collapsibleParDefaut = false }) {
         <div className="space-y-3 border-t border-sable-200 p-3.5">
           <div>
             <p className="mb-2 font-body text-xs font-semibold uppercase tracking-wide text-encre-400">
-              Couleur = score IPS
+              Couleur = profil social (IPS)
             </p>
             <BandeDegradeIPS />
             <div className="mt-1 flex justify-between font-mono text-[10px] text-encre-400">
@@ -159,149 +159,13 @@ function LegendeCarte({ collapsibleParDefaut = false }) {
   );
 }
 
-const SUGGESTIONS_PAR_PAGE = 5;
-
-/**
- * Liste déroulante d'autocomplétion sous le champ de recherche : 5
- * suggestions affichées initialement (communes puis établissements, cf.
- * useSuggestionsRecherche), 5 de plus chargées à chaque fois que le scroll
- * approche du bas de la liste — jusqu'à épuisement des résultats calculés.
- * Un clic sur une suggestion délègue entièrement au store
- * (selectionnerSuggestion) : remplit la recherche ET centre la carte sur la
- * commune ou l'établissement choisi.
- */
-function SuggestionsRecherche({ onChoisir, recherche }) {
-  const suggestions = useSuggestionsRecherche();
-  const [nombreAffiche, setNombreAffiche] = useState(SUGGESTIONS_PAR_PAGE);
-
-  // Nouvelle recherche → on repart d'un affichage court, pas du scroll précédent.
-  useEffect(() => {
-    setNombreAffiche(SUGGESTIONS_PAR_PAGE);
-  }, [recherche]);
-
-  if (suggestions.length === 0) return null;
-  const visibles = suggestions.slice(0, nombreAffiche);
-
-  const gererScroll = (e) => {
-    const el = e.currentTarget;
-    const procheDuBas = el.scrollHeight - el.scrollTop - el.clientHeight < 32;
-    if (procheDuBas) {
-      setNombreAffiche((n) => Math.min(n + SUGGESTIONS_PAR_PAGE, suggestions.length));
-    }
-  };
-
-  return (
-    <ul
-      onScroll={gererScroll}
-      // max-h-52 (plus petit que la hauteur de 5 lignes) : garantit que la
-      // liste dépasse toujours dès qu'il y a 5 suggestions ou plus, pour que
-      // le scroll soit réellement possible (avec max-h-64, 5 lignes tenaient
-      // pile dans le cadre : rien ne dépassait, donc rien à scroller, et le
-      // chargement des suggestions suivantes ne se déclenchait jamais).
-      // overscroll-contain : empêche le scroll de "déborder" vers le parent
-      // (la feuille de filtres mobile, elle-même scrollable) une fois qu'on
-      // atteint le haut/bas de cette liste — sans ça, continuer à swiper
-      // faisait défiler toute la page derrière la liste de suggestions.
-      className="absolute inset-x-0 top-full z-10 mt-1.5 max-h-52 overflow-y-auto overscroll-contain rounded-xl border border-sable-200 bg-white shadow-panel"
-    >
-      {visibles.map((s) => (
-        <li key={s.cle}>
-          <button
-            onClick={() => onChoisir(s)}
-            className="flex w-full items-center gap-2 px-3.5 py-2.5 text-left font-body text-sm text-encre-950 hover:bg-sable-100"
-          >
-            {s.type === "commune" ? (
-              <MapPin size={14} className="shrink-0 text-encre-400" />
-            ) : (
-              <School size={14} className="shrink-0 text-encre-400" />
-            )}
-            <span className="min-w-0 flex-1 truncate">
-              {s.label}
-              {s.type === "etablissement" && s.commune && (
-                <span className="ml-1.5 text-encre-400">— {s.commune}</span>
-              )}
-            </span>
-          </button>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-// Délai avant de répercuter la saisie dans le store (et donc de déclencher le
-// filtrage de ~9000 établissements) : sans lui, chaque frappe recalculait
-// immédiatement la liste filtrée, perceptible comme un lag pendant la
-// frappe. La saisie elle-même (état local) reste instantanée.
-const DEBOUNCE_RECHERCHE_MS = 200;
-
 function ContenuFiltres({ onFermer }) {
   const filtres = useEtablissementsStore((s) => s.filtres);
   const setFiltre = useEtablissementsStore((s) => s.setFiltre);
   const resetFiltres = useEtablissementsStore((s) => s.resetFiltres);
   const bornesIps = useEtablissementsStore((s) => s.bornesIps);
-  const selectionnerSuggestion = useEtablissementsStore((s) => s.selectionnerSuggestion);
-
-  const [texteRecherche, setTexteRecherche] = useState(filtres.recherche);
-  // Contrôle explicite de l'affichage du menu de suggestions : fermé par
-  // Entrée ou par un clic sur une suggestion, rouvert dès que l'utilisateur
-  // retape. Sans cet état séparé, le menu se rouvrait tout seul après Entrée
-  // (les suggestions restent calculées tant que le texte matche).
-  const [suggestionsOuvertes, setSuggestionsOuvertes] = useState(true);
-
-  // Resynchronise l'input si la recherche change depuis l'extérieur (clic
-  // sur une suggestion, réinitialisation des filtres...).
-  useEffect(() => {
-    setTexteRecherche(filtres.recherche);
-  }, [filtres.recherche]);
-
-  useEffect(() => {
-    if (texteRecherche === filtres.recherche) return;
-    const timer = setTimeout(() => setFiltre("recherche", texteRecherche), DEBOUNCE_RECHERCHE_MS);
-    return () => clearTimeout(timer);
-  }, [texteRecherche]);
-
   return (
     <div className="space-y-3">
-      <div className="relative">
-        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-encre-400" />
-        <input
-          type="text"
-          placeholder="Chercher un nom, une commune, un code postal…"
-          value={texteRecherche}
-          onChange={(e) => {
-            setTexteRecherche(e.target.value);
-            setSuggestionsOuvertes(true);
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              setSuggestionsOuvertes(false);
-              e.currentTarget.blur();
-            }
-          }}
-          // text-base (16px) plutôt que text-sm : en dessous de 16px, Safari/
-          // Chrome iOS zooment automatiquement la page au focus d'un champ
-          // texte, ce qui laissait la fenêtre zoomée après la recherche.
-          className="w-full rounded-xl border border-sable-200 bg-white py-2.5 pl-9 pr-3 font-body text-base
-                     text-encre-950 placeholder:text-encre-400 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-encre-600"
-        />
-        {suggestionsOuvertes && (
-          <SuggestionsRecherche
-            onChoisir={(s) => {
-              selectionnerSuggestion(s);
-              setSuggestionsOuvertes(false);
-              // Sur mobile, la recherche se fait dans la feuille de filtres :
-              // une fois un résultat choisi, on la referme pour révéler la
-              // carte et la fiche établissement qui vient de s'ouvrir.
-              // onFermer est undefined sur desktop (panneau flottant, pas
-              // besoin de le fermer), donc sans effet dans ce cas.
-              onFermer?.();
-            }}
-            recherche={filtres.recherche}
-          />
-        )}
-      </div>
-
       <div className="space-y-3.5 rounded-2xl border border-sable-200 bg-white p-3.5">
         <fieldset className="space-y-1">
           <legend className="mb-1 font-body text-xs font-semibold uppercase tracking-wide text-encre-400">
@@ -376,7 +240,7 @@ function ContenuFiltres({ onFermer }) {
 
         <div className="space-y-1.5">
           <p className="flex items-center gap-1.5 font-body text-xs font-semibold uppercase tracking-wide text-encre-400">
-            Score IPS minimum
+            IPS minimum
             <InfoBulle texte="Déplacez le curseur pour n'afficher que les établissements dont l'IPS est supérieur ou égal à la valeur choisie." position="droite" />
           </p>
           <SliderSimple
@@ -413,7 +277,7 @@ function ContenuFiltres({ onFermer }) {
 export default function FiltresPanel({ variant, ouvert, onToggle, onFermer }) {
   if (variant === "flottant-desktop") {
     return (
-      <div className="pointer-events-auto absolute left-4 top-20 max-h-[calc(100%-6rem)] w-[300px] overflow-y-auto">
+      <div className="pointer-events-auto absolute left-4 top-[8.5rem] max-h-[calc(100%-10rem)] w-[300px] overflow-y-auto">
         {!ouvert && (
           <button
             onClick={onToggle}
@@ -444,7 +308,7 @@ export default function FiltresPanel({ variant, ouvert, onToggle, onFermer }) {
   return (
     <>
       <div className="fixed inset-0 z-[1600] bg-encre-950/30" onClick={onFermer} />
-      <aside className="fixed inset-x-0 bottom-0 z-[1700] max-h-[85vh] overflow-y-auto rounded-t-3xl bg-sable-50 p-4 pb-6 shadow-panel">
+      <aside className="fixed inset-x-0 bottom-0 z-[1700] max-h-[85dvh] overflow-y-auto rounded-t-3xl bg-sable-50 p-4 pb-6 shadow-panel">
         <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-sable-200" />
         <div className="mb-3 flex items-center justify-between">
           <h2 className="font-display text-lg font-semibold text-encre-950">Filtres & légende</h2>

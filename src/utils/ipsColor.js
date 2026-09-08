@@ -17,8 +17,6 @@ export const COULEUR_IPS_INCONNU = "#9CA3AF";
 export function couleurDegradeIPS(valeur) {
   if (valeur == null) return COULEUR_IPS_INCONNU;
   const t = Math.min(1, Math.max(0, (valeur - IPS_MIN) / (IPS_MAX - IPS_MIN)));
-  // Rouge franc → ambre → vert franc : plus saturé qu'un dégradé pastel,
-  // pour que "faible IPS" / "IPS élevé" se distinguent au premier coup d'œil.
   const stops =
     t < 0.5
       ? [

@@ -12,6 +12,7 @@ import { trackEvent } from "../utils/analytics";
 
 const CENTRE_FRANCE = [46.6, 2.4];
 const ZOOM_FRANCE = 6;
+const BOUNDS_METROPOLE = [[41.3, -5.2], [51.2, 9.7]];
 const SEUIL_MOBILE_PX = 768;
 const SEUIL_ZOOM_ECLATEMENT = 10;
 const SEUIL_DECLUSTERING = 14;
@@ -77,7 +78,7 @@ function creerIcone(site, estSelectionne, effectifMin, effectifMax) {
 }
 
 function creerIconeCluster(cluster) {
-  const count = cluster.getChildCount();
+  const count = cluster.getAllChildMarkers().reduce((total, marqueur) => total + (marqueur.options.nbEtablissements ?? 1), 0);
   const taille = count < 10 ? 42 : count < 50 ? 50 : 60;
   const epaisseurAnneau = Math.max(6, Math.round(taille * 0.2));
 
@@ -105,7 +106,7 @@ function creerIconeCluster(cluster) {
 }
 
 function creerIconeDepartement(dept, estMobile) {
-  const taille = estMobile ? 72 : 84;
+  const taille = estMobile ? 56 : 68;
   const couleur = couleurDegradeIPS(dept.ipsMoyen);
   return L.divIcon({
     html: `<div style="
@@ -113,7 +114,7 @@ function creerIconeDepartement(dept, estMobile) {
       background:#FAF7F0;border:6px solid ${couleur};
       display:flex;flex-direction:column;align-items:center;justify-content:center;
       font-family:'Inter',sans-serif;color:#12203A;text-align:center;padding:4px;
-      box-shadow:0 6px 16px rgba(18,32,58,0.35);cursor:pointer;
+      box-shadow:0 3px 8px rgba(18,32,58,0.2);cursor:pointer;
     ">
       <span style="font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:${estMobile ? 15 : 17}px;line-height:1;">${dept.count}</span>
       <span style="font-size:${estMobile ? 9 : 10}px;font-weight:600;line-height:1.15;margin-top:2px;">${dept.nom}</span>
@@ -134,18 +135,36 @@ function RecentrerSurSelection({ etablissement }) {
   return null;
 }
 
+function RecentrageSurCommune({ commune, etablissements }) {
+  const map = useMap();
+  const cle = commune ? `${commune.departement}|${commune.nom}` : null;
+  const dernierCadrage = useRef(null);
+  useEffect(() => {
+    if (!cle) { dernierCadrage.current = null; return; }
+    if (dernierCadrage.current === cle) return;
+    const points = etablissements.filter(e => Number.isFinite(e.latitude) && Number.isFinite(e.longitude));
+    if (!points.length) return;
+    map.flyToBounds(L.latLngBounds(points.map(e => [e.latitude, e.longitude])), {
+      paddingTopLeft: window.innerWidth < 768 ? [24, 180] : [370, 100],
+      paddingBottomRight: [24, 80], maxZoom: 14, duration: 0.6,
+    });
+    dernierCadrage.current = cle;
+  }, [cle, etablissements, map]);
+  return null;
+}
+
 function CadrageInitial({ bounds }) {
   const map = useMap();
   const [fait, setFait] = useState(false);
   useEffect(() => {
     if (fait || !bounds) return;
-    map.fitBounds(bounds, { padding: [32, 32], maxZoom: ZOOM_FRANCE });
+    map.fitBounds(bounds, { paddingTopLeft: [24, 170], paddingBottomRight: [24, 70], maxZoom: ZOOM_FRANCE });
     setFait(true);
   }, [bounds, map, fait]);
   return null;
 }
 
-function RecentrageSurDepartement({ departement, sitesDuDepartement }) {
+function RecentrageSurDepartement({ departement, sitesDuDepartement, retourVersion }) {
   const map = useMap();
   const premierRendu = useRef(true);
 
@@ -160,13 +179,13 @@ function RecentrageSurDepartement({ departement, sitesDuDepartement }) {
       return;
     }
     if (departement === "Tous") {
-      map.flyTo(CENTRE_FRANCE, ZOOM_FRANCE, { duration: 0.6 });
+      map.flyToBounds(BOUNDS_METROPOLE, { paddingTopLeft: [24, 170], paddingBottomRight: [24, 70], maxZoom: ZOOM_FRANCE, duration: 0.6 });
       return;
     }
     if (bounds) {
       map.flyToBounds(bounds, { padding: [40, 40], duration: 0.6, maxZoom: 13 });
     }
-  }, [departement, bounds, map]);
+  }, [departement, bounds, map, retourVersion]);
 
   return null;
 }
@@ -226,6 +245,7 @@ export default function CarteEtablissements() {
   const filtres = useEtablissementsStore((s) => s.filtres);
   const setFiltre = useEtablissementsStore((s) => s.setFiltre);
 
+  const [retourVersion, setRetourVersion] = useState(0);
   const [zoomActuel, setZoomActuel] = useState(ZOOM_FRANCE);
   const [viewportBounds, setViewportBounds] = useState(null);
 
@@ -242,7 +262,7 @@ export default function CarteEtablissements() {
   const margeViewport = zoomActuel >= SEUIL_ZOOM_MARGE_RESSERREE ? MARGE_RESSERREE : MARGE_LARGE;
 
   const sites = useMemo(() => {
-    return regrouperParSite(etablissements).map((site) => {
+    return regrouperParSite(etablissements.filter(e => Number.isFinite(e.latitude) && Number.isFinite(e.longitude))).map((site) => {
       const ipsConnus = site.membres.map((m) => m.ips_etablissement).filter((v) => v != null);
       const effectifsConnus = site.membres.map((m) => m.effectif_total).filter((v) => v != null);
       return {
@@ -270,10 +290,7 @@ export default function CarteEtablissements() {
     });
   }, [sites]);
 
-  const boundsFrance = useMemo(() => {
-    if (sites.length === 0) return null;
-    return L.latLngBounds(sites.map((s) => [s.latitude, s.longitude]));
-  }, [sites]);
+  const boundsFrance = BOUNDS_METROPOLE;
 
   const sitesDuDepartementFiltre = useMemo(
     () => sites.filter((s) => s.departement === filtres.departement),
@@ -281,7 +298,7 @@ export default function CarteEtablissements() {
   );
 
   const etablissementSelectionne = etablissements.find((e) => e.code_uai === selectionId) ?? null;
-  const vueEnsemble = filtres.departement === "Tous" && zoomActuel < SEUIL_ZOOM_ECLATEMENT;
+  const vueEnsemble = !filtres.commune && !filtres.rechercheUai && filtres.departement === "Tous" && zoomActuel < SEUIL_ZOOM_ECLATEMENT;
   const sitesVisibles = useMemo(() => {
     if (vueEnsemble || !viewportBounds) return sites;
     return sites.filter((site) => {
@@ -297,8 +314,9 @@ export default function CarteEtablissements() {
         <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png?key=cb1_2h8i_1_e62007e74f2676dbb792a934" attribution='&copy; OpenStreetMap contributors &copy; CARTO' />
 
         {vueEnsemble ? (
-          sitesParDepartement.map((dept) => (
-            <Marker key={dept.nom} position={[dept.latitude, dept.longitude]} icon={creerIconeDepartement(dept, estMobile)} eventHandlers={{ click: () => { suivreInteractionCarte(); setFiltre("departement", dept.nom); } }}>
+          <MarkerClusterGroup key="departements" maxClusterRadius={estMobile ? 72 : 84} iconCreateFunction={creerIconeCluster}>
+          {sitesParDepartement.map((dept) => (
+            <Marker key={dept.nom} nbEtablissements={dept.count} ips={dept.ipsMoyen} position={[dept.latitude, dept.longitude]} icon={creerIconeDepartement(dept, estMobile)} eventHandlers={{ click: () => { suivreInteractionCarte(); setFiltre("departement", dept.nom); } }}>
               <Tooltip direction="top" offset={[0, -12]} opacity={1}>
                 <div className="font-body text-sm">
                   <p className="font-semibold text-encre-950">{dept.nom}</p>
@@ -307,9 +325,10 @@ export default function CarteEtablissements() {
                 </div>
               </Tooltip>
             </Marker>
-          ))
+          ))}
+          </MarkerClusterGroup>
         ) : (
-          <MarkerClusterGroup chunkedLoading chunkInterval={100} chunkDelay={25} iconCreateFunction={creerIconeCluster} maxClusterRadius={rayonCluster} disableClusteringAtZoom={SEUIL_DECLUSTERING} spiderfyOnMaxZoom removeOutsideVisibleBounds>
+          <MarkerClusterGroup key="etablissements" chunkedLoading chunkInterval={100} chunkDelay={25} iconCreateFunction={creerIconeCluster} maxClusterRadius={rayonCluster} disableClusteringAtZoom={SEUIL_DECLUSTERING} spiderfyOnMaxZoom removeOutsideVisibleBounds>
             {sitesVisibles.map((site) => {
               const estSiteSelectionne = site.membres.some((m) => m.code_uai === selectionId);
               const principal = site.membres.find((m) => m.code_uai === selectionId) ?? site.membres[0];
@@ -331,7 +350,8 @@ export default function CarteEtablissements() {
         )}
 
         <CadrageInitial bounds={boundsFrance} />
-        <RecentrageSurDepartement departement={filtres.departement} sitesDuDepartement={sitesDuDepartementFiltre} />
+        <RecentrageSurDepartement retourVersion={retourVersion} departement={filtres.departement} sitesDuDepartement={sitesDuDepartementFiltre} />
+        <RecentrageSurCommune commune={filtres.commune} etablissements={etablissements} />
         <RecentrerSurSelection etablissement={etablissementSelectionne} />
         <SuiviZoom onZoomChange={setZoomActuel} />
         {!vueEnsemble && <SuiviViewport onViewportChange={handleViewportChange} marge={margeViewport} />}
@@ -344,15 +364,15 @@ export default function CarteEtablissements() {
         <div className="absolute inset-y-0 right-0 w-7 bg-gradient-to-l from-sable-100/70 to-transparent" />
       </div>
 
-      <div className="absolute right-4 top-28 z-[1000] flex flex-col items-end gap-2 md:top-16">
-        {!vueEnsemble && (
-          <button onClick={() => setFiltre("departement", "Tous")} className="rounded-full bg-encre-950 px-3 py-1.5 font-body text-xs font-semibold text-sable-50 shadow-panel">
-            ← Tous les départements
-          </button>
-        )}
-        <div className="rounded-xl bg-sable-50/95 px-3 py-1.5 font-mono text-xs text-encre-600 shadow-panel">
-          {etablissements.length} établissement{etablissements.length > 1 ? "s" : ""} · {sites.length} point{sites.length > 1 ? "s" : ""} sur la carte
-        </div>
+      <div className="absolute bottom-12 left-3 z-[1000] flex max-w-[calc(100%-5rem)] gap-2 md:left-[340px]">
+        <button onClick={() => { setFiltre("departement", "Tous"); setRetourVersion(v => v + 1); }} className="rounded-full bg-sable-50 px-3 py-2 text-xs font-semibold text-encre-950 shadow-panel">Vue France</button>
+        <select aria-label="Afficher un territoire ultramarin" value={["Guadeloupe", "Martinique", "Guyane", "La Réunion", "Mayotte", "Saint-Martin", "Saint-Barthélémy", "St-Pierre-et-Miquelon", "Nouvelle Calédonie"].includes(filtres.departement) ? filtres.departement : ""} onChange={e => { setFiltre("departement", e.target.value || "Tous"); setRetourVersion(v => v + 1); }} className="min-w-0 max-w-44 rounded-full bg-sable-50 px-3 py-2 text-sm text-encre-950 shadow-panel">
+          <option value="">Outre-mer</option>
+          {["Guadeloupe", "Martinique", "Guyane", "La Réunion", "Mayotte", "Saint-Martin", "Saint-Barthélémy", "St-Pierre-et-Miquelon", "Nouvelle Calédonie"].filter(nom => filtres.departementsDisponibles.includes(nom)).map(nom => <option key={nom} value={nom}>{nom}</option>)}
+        </select>
+      </div>
+      <div className="absolute right-4 top-16 z-[1000] hidden rounded-xl bg-sable-50/95 px-3 py-1.5 font-mono text-xs text-encre-600 shadow-panel md:block">
+        {etablissements.length} établissements
       </div>
     </div>
   );

@@ -3,8 +3,9 @@ import { useEtablissementsStore } from "./hooks/useEtablissementsStore";
 import FiltresPanel from "./components/FiltresPanel";
 import ChipsFiltresActifs from "./components/ChipsFiltresActifs";
 import CarteEtablissements from "./components/CarteEtablissements";
-import { LogoTrajectoires } from "./components/EcranOnboarding";
+import LogoTrajectoires from "./components/LogoTrajectoires";
 import { trackEvent } from "./utils/analytics";
+import RechercheEtablissements from "./components/RechercheEtablissements";
 import BulleAvis from "./components/BulleAvis";
 
 const PanneauDetail = lazy(() => import("./components/PanneauDetail"));
@@ -84,6 +85,10 @@ export default function App() {
         </button>
       </header>
 
+      <div className="absolute inset-x-3 top-14 z-[1250] md:left-4 md:right-auto md:top-20 md:w-[340px]">
+        <RechercheEtablissements />
+      </div>
+
       <div className="pointer-events-none absolute inset-0 z-[1100] hidden md:block">
         <FiltresPanel
           variant="flottant-desktop"
@@ -100,7 +105,7 @@ export default function App() {
         </div>
       )}
 
-      <div className="absolute inset-x-0 top-14 z-[1050] px-3 md:hidden">
+      <div className="absolute inset-x-0 top-28 z-[1050] px-3 md:hidden">
         <ChipsFiltresActifs onOuvrirFiltres={ouvrirFiltres} />
       </div>
 

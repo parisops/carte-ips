@@ -13,8 +13,7 @@ import ResultatsScolaires from "./ResultatsScolaires";
 import InfoBulle from "./InfoBulle";
 import HistoriqueIPS from "./HistoriqueIPS";
 
-const HAUTEURS_ETATS = { peek: 16, mi: 52, plein: 92 };
-const SEUILS_SNAP = { peek: 30, mi: 72 };
+import { HAUTEURS_ETATS, etatLePlusProche } from "../utils/bottomSheet";
 
 function useBottomSheetDrag(etatInitial = "mi") {
   const [etat, setEtat] = useState(etatInitial);
@@ -24,9 +23,10 @@ function useBottomSheetDrag(etatInitial = "mi") {
 
   const onPointerDown = useCallback(
     (e) => {
+      if (e.target.closest("button")) return;
       setEnTransition(false);
       drag.current = { startY: e.clientY, startHauteur: HAUTEURS_ETATS[etat] };
-      e.target.setPointerCapture?.(e.pointerId);
+      e.currentTarget.setPointerCapture?.(e.pointerId);
     },
     [etat]
   );
@@ -35,31 +35,24 @@ function useBottomSheetDrag(etatInitial = "mi") {
     if (!drag.current) return;
     const deltaVh = ((drag.current.startY - e.clientY) / window.innerHeight) * 100;
     const nouvelle = Math.min(96, Math.max(6, drag.current.startHauteur + deltaVh));
+    drag.current.hauteur = nouvelle;
     setHauteurEnCours(nouvelle);
   }, []);
 
   const onPointerUp = useCallback(() => {
-    if (hauteurEnCours == null) {
-      drag.current = null;
-      return;
-    }
-    const finale =
-      hauteurEnCours < SEUILS_SNAP.peek
-        ? "peek"
-        : hauteurEnCours < SEUILS_SNAP.mi
-        ? "peek"
-        : hauteurEnCours < 78
-        ? "mi"
-        : "plein";
+    if (drag.current?.hauteur == null) { drag.current = null; return; }
+    const finale = etatLePlusProche(drag.current.hauteur);
     setEnTransition(true);
     setEtat(finale);
     setHauteurEnCours(null);
     drag.current = null;
-  }, [hauteurEnCours]);
+  }, []);
 
   const changerEtat = useCallback((nouvelEtat) => {
     setEnTransition(true);
     setEtat(nouvelEtat);
+    setHauteurEnCours(null);
+    drag.current = null;
   }, []);
 
   const hauteurActuelle = hauteurEnCours ?? HAUTEURS_ETATS[etat];
@@ -70,17 +63,22 @@ export default function PanneauDetail({ variant = "flottant-desktop" }) {
   const etablissement = useEtablissementSelectionne();
   const fermerPanneau = useEtablissementsStore((s) => s.fermerPanneau);
   const selectionnerEtablissement = useEtablissementsStore((s) => s.selectionnerEtablissement);
+  const zone = etablissement?.code_uai.slice(0, 3);
+  const detailsCharges = useEtablissementsStore(s => s.zonesChargees[zone]);
+  const erreurDetails = useEtablissementsStore(s => s.zonesEnErreur[zone]);
+  const chargerDetails = useEtablissementsStore(s => s.chargerDetailsSiBesoin);
   const tousLesEtablissements = useEtablissementsStore((s) => s.etablissements);
 
   const sheet = useBottomSheetDrag("mi");
+  const { setEtat: changerEtat } = sheet;
 
   const dernierCodeUai = useRef(null);
   useEffect(() => {
     if (etablissement && etablissement.code_uai !== dernierCodeUai.current) {
       dernierCodeUai.current = etablissement.code_uai;
-      sheet.setEtat("mi");
+      changerEtat("mi");
     }
-  }, [etablissement, sheet]);
+  }, [etablissement, changerEtat]);
 
   const contenuRef = useRef(null);
   const [peutScroller, setPeutScroller] = useState(false);
@@ -118,7 +116,11 @@ export default function PanneauDetail({ variant = "flottant-desktop" }) {
       ]
     : [];
 
-  const contenu = (
+  const contenu = !detailsCharges ? (
+    <div role="status" className="py-4 text-sm text-encre-600">
+      {erreurDetails ? <>Les détails n’ont pas pu être chargés. <button className="mt-3 block rounded-lg bg-encre-950 px-4 py-2 text-white" onClick={() => chargerDetails(etablissement.code_uai)}>Réessayer</button></> : "Chargement des détails…"}
+    </div>
+  ) : (
     <ContenuFiche
       etablissement={etablissement}
       parite={parite}
@@ -156,13 +158,21 @@ export default function PanneauDetail({ variant = "flottant-desktop" }) {
       <aside
         className={`fixed inset-x-0 bottom-0 z-[1500] flex flex-col overflow-hidden rounded-t-3xl bg-sable-50 shadow-panel
                     ${sheet.enTransition ? "transition-[height] duration-300 ease-[cubic-bezier(0.34,1.4,0.64,1)]" : ""}`}
-        style={{ height: `${hauteur}dvh` }}
+        style={{ height: `${hauteur}dvh`, minHeight: sheet.etat === "peek" ? "220px" : undefined, maxHeight: "96dvh", paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
       >
         <div
           className="group flex shrink-0 cursor-grab touch-none flex-col items-center justify-center gap-1 py-2.5 active:bg-sable-100"
           onPointerDown={sheet.onPointerDown}
           onPointerMove={sheet.onPointerMove}
           onPointerUp={sheet.onPointerUp}
+          onPointerCancel={() => sheet.setEtat(sheet.etat)}
+          tabIndex={0}
+          onKeyDown={e => {
+            if (["ArrowUp", "ArrowDown", "Home", "End"].includes(e.key)) {
+              e.preventDefault();
+              sheet.setEtat(e.key === "End" ? "plein" : e.key === "Home" ? "peek" : e.key === "ArrowUp" ? (sheet.etat === "peek" ? "mi" : "plein") : (sheet.etat === "plein" ? "mi" : "peek"));
+            }
+          }}
           role="slider"
           aria-label="Redimensionner le panneau"
           aria-valuenow={Math.round(hauteur)}
@@ -173,14 +183,14 @@ export default function PanneauDetail({ variant = "flottant-desktop" }) {
           <div className="flex gap-1">
             <button
               onClick={() => sheet.setEtat(sheet.etat === "peek" ? "mi" : "plein")}
-              className="rounded-full p-0.5 text-encre-400 hover:text-encre-600"
+              className="rounded-full px-3 py-1 text-encre-600 hover:text-encre-600"
               aria-label="Agrandir le panneau"
             >
               <ChevronUp size={14} />
             </button>
             <button
               onClick={() => sheet.setEtat(sheet.etat === "plein" ? "mi" : "peek")}
-              className="rounded-full p-0.5 text-encre-400 hover:text-encre-600"
+              className="rounded-full px-3 py-1 text-encre-600 hover:text-encre-600"
               aria-label="Réduire le panneau"
             >
               <ChevronDown size={14} />
@@ -210,7 +220,7 @@ export default function PanneauDetail({ variant = "flottant-desktop" }) {
         {sheet.etat === "peek" && (
           <button
             onClick={() => sheet.setEtat("mi")}
-            className="mx-5 mb-4 flex items-center justify-center gap-1.5 rounded-xl bg-encre-950 py-3 font-body text-sm font-semibold text-sable-50"
+            className="mx-5 mb-3 shrink-0 flex items-center justify-center gap-1.5 rounded-xl bg-encre-950 py-3 font-body text-sm font-semibold text-sable-50"
           >
             Voir la fiche complète <ChevronDown size={15} className="rotate-180" />
           </button>
@@ -234,7 +244,7 @@ function EnTeteFiche({ etablissement, fratrie, onFermer, onSelectFratrie, compac
         <X size={18} />
       </button>
 
-      <h2 className="pr-8 font-display text-lg font-semibold leading-tight text-encre-950">
+      <h2 className={`${compact ? "line-clamp-2" : ""} pr-8 font-display text-lg font-semibold leading-tight text-encre-950`}>
         {etablissement.nom_etablissement}
       </h2>
 
@@ -302,10 +312,57 @@ function ContenuFiche({ etablissement, parite, dataFilieres }) {
 
   return (
     <div className="space-y-6">
-      <section>
-        <h3 className="mb-2 flex items-center gap-1.5 font-body text-xs font-semibold uppercase tracking-wide text-encre-400">
+      <ResultatsScolaires resultats={etablissement} typeEtablissement={etablissement.type_etablissement} />
+
+      {etablissement.ips_etablissement != null ? (
+        <section>
+          <h3 className="mb-2 flex items-center gap-1.5 font-body text-xs font-semibold uppercase tracking-wide text-encre-400">
+            Profil social — IPS
+            <InfoBulle texte="L'Indice de Position Sociale (IPS) résume le profil social et scolaire moyen des familles d'un établissement, à partir des professions des deux parents. Échelle continue d'environ 50 à 170. Cet indice moyen décrit le public accueilli. Il ne mesure ni la qualité de l’établissement, ni à lui seul la diversité des profils sociaux. Les résultats et la valeur ajoutée apportent d’autres repères." />
+          </h3>
+          <p className="mb-2 font-mono text-2xl font-semibold text-encre-950">
+            {etablissement.ips_etablissement}
+          </p>
+          <GaugeIPS
+            valeur={etablissement.ips_etablissement}
+            moyDepartement={etablissement.ips_moy_departement}
+            moyAcademie={etablissement.ips_moy_academie}
+            moyNational={etablissement.ips_moy_national}
+          />
+          {etablissement.ips_percentile_regional != null && (
+            <p className="mt-2 font-body text-xs text-encre-600">
+              Plus favorisé que <span className="font-mono font-semibold">{etablissement.ips_percentile_regional}%</span>{" "}
+              des {etablissement.type_etablissement.toLowerCase()}s de France.
+            </p>
+          )}
+
+          <HistoriqueIPS codeUai={etablissement.code_uai} valeurActuelle={etablissement.ips_etablissement} />
+
+          {etablissement.ips_millesime && (
+            <p className="mt-2 flex items-center gap-1 font-body text-[11px] text-encre-400">
+              Source : DEPP (Ministère de l'Éducation nationale), rentrée {etablissement.ips_millesime}
+              <InfoBulle
+                texte="Comparer deux établissements sur leur seul IPS compare des populations d'élèves, pas des performances. Un écart de quelques points ne doit pas être sur-interprété. Pour juger l'efficacité propre d'un établissement à profil équivalent, référez-vous plutôt à sa valeur ajoutée (IVAC/IVAL)."
+                position="haut"
+              />
+            </p>
+          )}
+        </section>
+      ) : (
+        <section>
+          <h3 className="mb-2 font-body text-xs font-semibold uppercase tracking-wide text-encre-400">
+            Profil social — IPS
+          </h3>
+          <p className="rounded-lg bg-sable-100 px-3 py-2 font-body text-xs text-encre-600">
+            IPS indisponible dans les sources utilisées. Certaines valeurs ne sont pas publiées, notamment pour préserver l’anonymat des élèves.
+          </p>
+        </section>
+      )}
+
+      <details>
+        <summary className="cursor-pointer mb-2 flex items-center gap-1.5 font-body text-xs font-semibold uppercase tracking-wide text-encre-400">
           <Users size={13} /> Démographie
-        </h3>
+        </summary>
         <div className="flex items-baseline gap-4">
           <p className="font-display text-3xl font-semibold text-encre-950">
             {etablissement.effectif_total ?? "—"}
@@ -340,55 +397,8 @@ function ContenuFiche({ etablissement, parite, dataFilieres }) {
             Données de la rentrée {etablissement.effectifs_millesime}
           </p>
         )}
-      </section>
+      </details>
 
-      {etablissement.ips_etablissement != null ? (
-        <section>
-          <h3 className="mb-2 flex items-center gap-1.5 font-body text-xs font-semibold uppercase tracking-wide text-encre-400">
-            Mixité sociale — IPS
-            <InfoBulle texte="L'Indice de Position Sociale (IPS) résume le profil social et scolaire moyen des familles d'un établissement, à partir des professions des deux parents. Échelle continue d'environ 50 à 170. Il décrit le PUBLIC accueilli, pas la qualité de l'établissement — pour cela, voir la valeur ajoutée (IVAC/IVAL) ci-dessous." />
-          </h3>
-          <p className="mb-2 font-mono text-2xl font-semibold text-encre-950">
-            {etablissement.ips_etablissement}
-          </p>
-          <GaugeIPS
-            valeur={etablissement.ips_etablissement}
-            moyDepartement={etablissement.ips_moy_departement}
-            moyAcademie={etablissement.ips_moy_academie}
-            moyNational={etablissement.ips_moy_national}
-          />
-          {etablissement.ips_percentile_regional != null && (
-            <p className="mt-2 font-body text-xs text-encre-600">
-              Plus favorisé que <span className="font-mono font-semibold">{etablissement.ips_percentile_regional}%</span>{" "}
-              des {etablissement.type_etablissement.toLowerCase()}s de France.
-            </p>
-          )}
-
-          <HistoriqueIPS codeUai={etablissement.code_uai} valeurActuelle={etablissement.ips_etablissement} />
-
-          {etablissement.ips_millesime && (
-            <p className="mt-2 flex items-center gap-1 font-body text-[11px] text-encre-400">
-              Source : DEPP (Ministère de l'Éducation nationale), rentrée {etablissement.ips_millesime}
-              <InfoBulle
-                texte="Comparer deux établissements sur leur seul IPS compare des populations d'élèves, pas des performances. Un écart de quelques points ne doit pas être sur-interprété. Pour juger l'efficacité propre d'un établissement à profil équivalent, référez-vous plutôt à sa valeur ajoutée (IVAC/IVAL)."
-                position="haut"
-              />
-            </p>
-          )}
-        </section>
-      ) : (
-        <section>
-          <h3 className="mb-2 font-body text-xs font-semibold uppercase tracking-wide text-encre-400">
-            Mixité sociale — IPS
-          </h3>
-          <p className="rounded-lg bg-sable-100 px-3 py-2 font-body text-xs text-encre-600">
-            IPS non publié pour cet établissement — le ministère ne diffuse pas l'indicateur en
-            dessous d'un certain effectif, pour préserver l'anonymat des élèves.
-          </p>
-        </section>
-      )}
-
-      <ResultatsScolaires resultats={etablissement} typeEtablissement={etablissement.type_etablissement} />
 
       {(etablissement.effectif_ulis > 0 || etablissement.effectif_segpa > 0) && (
         <section>
