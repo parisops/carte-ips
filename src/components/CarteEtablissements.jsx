@@ -134,7 +134,7 @@ function creerIconeCluster(cluster) {
 }
 
 function creerIconeDepartement(dept, estMobile) {
-  const taille = estMobile ? 56 : 68;
+  const taille = estMobile ? 54 : 64;
   const couleur = couleurDegradeIPS(dept.ipsMoyen);
   return L.divIcon({
     html: `<div style="
@@ -145,7 +145,6 @@ function creerIconeDepartement(dept, estMobile) {
       box-shadow:0 3px 8px rgba(18,32,58,0.2);cursor:pointer;
     ">
       <span style="font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:${estMobile ? 15 : 17}px;line-height:1;">${dept.count}</span>
-      <span style="font-size:${estMobile ? 9 : 10}px;font-weight:600;line-height:1.15;margin-top:2px;">${dept.nom}</span>
     </div>`,
     className: "",
     iconSize: [taille, taille],
@@ -370,7 +369,7 @@ export default function CarteEtablissements() {
         <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png?key=cb1_2h8i_1_e62007e74f2676dbb792a934" attribution='&copy; OpenStreetMap contributors &copy; CARTO' />
 
         {vueEnsemble ? (
-          <MarkerClusterGroup key="departements" maxClusterRadius={estMobile ? 72 : 84} iconCreateFunction={creerIconeCluster}>
+          <>
           {zonesAffichees.map((zone) => (
             <Marker key={zone.nom} nbEtablissements={zone.count} ips={zone.ipsMoyen} position={[zone.latitude, zone.longitude]} icon={creerIconeDepartement(zone, estMobile)} eventHandlers={{ click: () => {
               suivreInteractionCarte();
@@ -389,7 +388,7 @@ export default function CarteEtablissements() {
               </Tooltip>
             </Marker>
           ))}
-          </MarkerClusterGroup>
+          </>
         ) : (
           <MarkerClusterGroup key="etablissements" chunkedLoading chunkInterval={100} chunkDelay={25} iconCreateFunction={creerIconeCluster} maxClusterRadius={rayonCluster} disableClusteringAtZoom={SEUIL_DECLUSTERING} spiderfyOnMaxZoom removeOutsideVisibleBounds>
             {sitesVisibles.map((site) => {
