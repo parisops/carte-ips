@@ -85,6 +85,11 @@ export default function MentionsLegales({ onClose }) {
               Pour demander l’accès, la rectification ou la suppression des informations transmises, contactez l’éditeur via ce même formulaire en précisant votre demande.
             </p>
           </section>
+          <section>
+            <h3 className="mb-1 font-semibold text-encre-950">Liste d’attente Parcoursup</h3>
+            <p>Avec votre accord, votre adresse email et la date de votre inscription sont transmises via FormSubmit à l’éditeur pour vous prévenir du lancement du futur accès Premium Parcoursup. L’inscription est gratuite et ne constitue pas un abonnement payant. Vous pouvez retirer votre accord et demander la suppression de votre inscription via le bouton de contact du site.</p>
+            <p className="mt-2">La visibilité de la présentation, son ouverture et les inscriptions confirmées font l’objet d’événements de mesure d’audience génériques. Votre email n’est pas transmis aux outils de mesure d’audience.</p>
+          </section>
         </div>
       </div>
     </div>

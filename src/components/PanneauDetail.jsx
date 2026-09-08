@@ -12,6 +12,7 @@ import EffectifsParNiveau from "./EffectifsParNiveau";
 import ResultatsScolaires from "./ResultatsScolaires";
 import InfoBulle from "./InfoBulle";
 import HistoriqueIPS from "./HistoriqueIPS";
+import PremiumParcoursup from "./PremiumParcoursup";
 
 import { HAUTEURS_ETATS, etatLePlusProche } from "../utils/bottomSheet";
 import { nomEtablissementSansAdresse } from "../utils/displayName";
@@ -313,6 +314,7 @@ function ContenuFiche({ etablissement, parite, dataFilieres }) {
 
   return (
     <div className="space-y-6">
+      {etablissement.type_etablissement === "Lycée" && <PremiumParcoursup />}
       <ResultatsScolaires resultats={etablissement} typeEtablissement={etablissement.type_etablissement} />
 
       {etablissement.ips_etablissement != null ? (

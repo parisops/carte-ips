@@ -2,6 +2,7 @@ import { useState } from "react";
 import { MessageCircle, X, Send, Check } from "lucide-react";
 import { useAInteragi } from "../hooks/useEtablissementsStore";
 import { trackEvent } from "../utils/analytics";
+import { ENDPOINT_CONTACT } from "../utils/premiumParcoursup";
 
 /**
  * Jeton FormSubmit (fourni après confirmation de l'adresse de réception) au
@@ -9,8 +10,7 @@ import { trackEvent } from "../utils/analytics";
  * FormSubmit, mais ne révèle jamais l'adresse réelle dans le code livré au
  * navigateur, y compris à l'inspection du bundle JS.
  */
-const JETON_FORMSUBMIT = "caeba402af3e279c617c491017dd1ec9";
-const ENDPOINT_AVIS = `https://formsubmit.co/ajax/${JETON_FORMSUBMIT}`;
+const ENDPOINT_AVIS = ENDPOINT_CONTACT;
 
 /**
  * Bulle flottante "Laisser un avis" — volontairement invisible tant que
