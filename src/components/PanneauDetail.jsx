@@ -14,6 +14,7 @@ import InfoBulle from "./InfoBulle";
 import HistoriqueIPS from "./HistoriqueIPS";
 
 import { HAUTEURS_ETATS, etatLePlusProche } from "../utils/bottomSheet";
+import { nomEtablissementSansAdresse } from "../utils/displayName";
 
 function useBottomSheetDrag(etatInitial = "mi") {
   const [etat, setEtat] = useState(etatInitial);
@@ -245,7 +246,7 @@ function EnTeteFiche({ etablissement, fratrie, onFermer, onSelectFratrie, compac
       </button>
 
       <h2 className={`${compact ? "line-clamp-2" : ""} pr-8 font-display text-lg font-semibold leading-tight text-encre-950`}>
-        {etablissement.nom_etablissement}
+        {nomEtablissementSansAdresse(etablissement.nom_etablissement, etablissement.adresse)}
       </h2>
 
       {!compact && (

@@ -338,11 +338,12 @@ export default function CarteEtablissements() {
   const parisSites = useMemo(() => sites.filter(s => s.departement === "Paris"), [sites]);
   const quartiersParis = useMemo(() => agreger(parisSites, s => nomQuartierParis(s.membres[0])), [parisSites, agreger]);
   const sitesNavigues = useMemo(() => {
-    if (navigation.niveau === "quartiers") return parisSites.filter(s => nomQuartierParis(s.membres[0]) === navigation.valeur);
+    if (navigation.niveau === "quartiers") return parisSites;
     if (navigation.niveau === "etablissements" && navigation.parent === "Paris") return parisSites.filter(s => navigation.quartier ? nomQuartierParis(s.membres[0]) === navigation.quartier : true);
     if (navigation.niveau === "etablissements") return sites.filter(s => s.departement === navigation.valeur);
+    if (navigation.niveau === "departements") return regionSites;
     return sites;
-  }, [navigation, sites, parisSites]);
+  }, [navigation, sites, parisSites, regionSites]);
 
   const boundsFrance = BOUNDS_METROPOLE;
 
@@ -352,7 +353,7 @@ export default function CarteEtablissements() {
   );
 
   const etablissementSelectionne = etablissements.find((e) => e.code_uai === selectionId) ?? null;
-  const vueEnsemble = !filtres.commune && !filtres.rechercheUai && navigation.niveau !== "etablissements";
+  const vueEnsemble = !filtres.commune && !filtres.rechercheUai && navigation.niveau !== "etablissements" && zoomActuel < SEUIL_ZOOM_ECLATEMENT;
   const zonesAffichees = navigation.niveau === "regions" ? regions : navigation.niveau === "departements" ? departements : navigation.niveau === "quartiers" ? quartiersParis : [];
   const sitesVisibles = useMemo(() => {
     if (vueEnsemble || !viewportBounds) return sitesNavigues;
