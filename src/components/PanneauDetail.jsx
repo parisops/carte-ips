@@ -12,6 +12,7 @@ import EffectifsParNiveau from "./EffectifsParNiveau";
 import ResultatsScolaires from "./ResultatsScolaires";
 import InfoBulle from "./InfoBulle";
 import HistoriqueIPS from "./HistoriqueIPS";
+import Soutien from "./Soutien";
 import Premium from "./Premium";
 import { BoutonComparer } from "./Comparaison";
 
@@ -142,6 +143,7 @@ export default function PanneauDetail({ variant = "flottant-desktop" }) {
         />
         <div ref={contenuRef} className="overflow-y-auto px-5 py-5">
           {contenu}
+          {detailsCharges && <Soutien contexte="fiche" typeEtablissement={etablissement.type_etablissement} key={etablissement.code_uai} />}
         </div>
         {peutScroller && (
           <div className="pointer-events-none relative -mt-8 h-8 bg-gradient-to-t from-sable-50 to-transparent" />
@@ -213,6 +215,7 @@ export default function PanneauDetail({ variant = "flottant-desktop" }) {
           <div className="relative flex-1 overflow-hidden">
             <div ref={contenuRef} className="h-full overflow-y-auto px-5 pb-8 pt-2">
               {contenu}
+          {detailsCharges && <Soutien contexte="fiche" typeEtablissement={etablissement.type_etablissement} key={etablissement.code_uai} />}
             </div>
             {peutScroller && (
               <div className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-sable-50 to-transparent" />

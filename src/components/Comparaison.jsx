@@ -3,6 +3,8 @@ import { createPortal } from "react-dom";
 import { ArrowLeftRight, Plus, Search, X } from "lucide-react";
 import { useEtablissementsStore } from "../hooks/useEtablissementsStore";
 import { trackEvent, trackSessionEvent } from "../utils/analytics";
+import Soutien from "./Soutien";
+import { useSoutienStore } from "../utils/soutien";
 import { nomEtablissementSansAdresse } from "../utils/displayName";
 
 const bouton = "flex min-h-11 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tableau-700";
@@ -75,6 +77,7 @@ function DialogueComparaison() {
     if (!pret || paireMesuree.current === paire) return;
     paireMesuree.current = paire;
     const donnees = { type_etablissement: type };
+    useSoutienStore.getState().marquerComparaison();
     trackEvent("comparaison-affichee", undefined, donnees);
     trackSessionEvent("comparaison-utilisee", donnees);
   }, [pret, ids, type]);
@@ -121,6 +124,7 @@ function DialogueComparaison() {
         <Ligne titre="Nombre d’élèves" selection={selection} champ="effectif_total" annee="effectifs_millesime" />
         <Ligne titre="Éducation prioritaire" selection={selection} valeur={e => e.label_rep || "Non indiqué"} />
         <p className="mt-5 text-xs leading-relaxed text-encre-600">Sources : données publiques du ministère de l’Éducation nationale (DEPP). Les millésimes disponibles sont indiqués sous les valeurs. Cette comparaison ne constitue pas un classement.</p>
+        <Soutien contexte="comparaison" typeEtablissement={type} />
       </>}
     </div>
   </dialog>;

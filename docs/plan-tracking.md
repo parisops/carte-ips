@@ -41,3 +41,17 @@ Après observation de l’usage, proposer un aperçu de dossier et un prix préc
 ## Périmètre du MVP
 
 Deux établissements de même type, sélection conservée pendant le chargement de l’application, recherche indépendante des filtres de la carte, données détaillées chargées par zone et états de reprise en cas d’échec. Pas de persistance après rechargement, paiement, compte ni dossier PDF à ce stade.
+
+## Soutien Ko-fi
+
+L’invitation apparaît en fin de fiche ou de comparaison après 60 secondes actives et soit trois fiches distinctes consultées, soit une paire de comparaison affichée. Le temps actif exclut les onglets cachés, les fenêtres sans focus et les périodes sans interaction depuis plus de 30 secondes. Les noms/UAI restent uniquement en mémoire pour dédupliquer les fiches.
+
+La visibilité d’au moins 50 % de l’encart réserve l’unique présentation de la session d’onglet (sessionStorage). Fermer ou « Plus tard » repousse la prochaine proposition de 30 jours ; cliquer vers Ko-fi la repousse de 90 jours (localStorage). Ces préférences ne suivent pas l’utilisateur entre appareils et peuvent disparaître si le stockage est effacé ou bloqué. Le clic ne prouve pas une contribution.
+
+| Événement | Déclenchement | Propriétés |
+|---|---|---|
+| soutien-vu | Au moins 50 % de l’encart visible, une fois par session d’onglet | contexte : fiche/comparaison ; type_etablissement |
+| soutien-clic | Ouverture du lien Ko-fi | mêmes propriétés |
+| soutien-ferme | Croix ou bouton « Plus tard » | mêmes propriétés |
+
+Observer les vues et clics par contexte et type, puis vérifier les contributions effectives dans Ko-fi. Aucun paiement ni email n’est envoyé aux outils d’analytics. Le lien externe est ouvert dans un nouvel onglet ; aucun widget tiers n’est chargé sur Trajectoires.

@@ -6,6 +6,7 @@ import CarteEtablissements from "./components/CarteEtablissements";
 import LogoTrajectoires from "./components/LogoTrajectoires";
 import { trackEvent } from "./utils/analytics";
 import RechercheEtablissements from "./components/RechercheEtablissements";
+import { useTempsActifSoutien } from "./components/Soutien";
 import BulleAvis from "./components/BulleAvis";
 import Comparaison, { AccesComparaison } from "./components/Comparaison";
 
@@ -16,6 +17,7 @@ const EcranOnboarding = lazy(() => import("./components/EcranOnboarding"));
 const CLE_DEJA_VU = "trajectoires:onboarding-vu";
 
 export default function App() {
+  useTempsActifSoutien();
   const init = useEtablissementsStore((s) => s.init);
   const isLoaded = useEtablissementsStore((s) => s.isLoaded);
   const erreurChargement = useEtablissementsStore((s) => s.erreurChargement);
