@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ArrowRight, Check, Compass, X } from "lucide-react";
-import { trackEvent } from "../utils/analytics";
+import { trackEvent, trackSessionEvent } from "../utils/analytics";
 import { CONSENTEMENT_PREMIUM, inscrirePremium } from "../utils/premium";
 
 // Une exposition au maximum par chargement de page, même
@@ -121,7 +121,7 @@ function PresentationPremium({ onClose }) {
           <p className="text-sm font-semibold">Être prévenu du lancement</p>
           <p className="text-sm text-encre-800">L’inscription à la liste d’attente est gratuite et sans engagement. Le Premium sera proposé en paiement unique, sans abonnement. Tarif à définir.</p>
           <label htmlFor={`${id}-email`} className="block text-sm font-medium">Votre adresse email</label>
-          <input id={`${id}-email`} name="email" type="email" autoComplete="email" required maxLength={254} value={email} onChange={e => setEmail(e.target.value)} disabled={etat === "envoi"} className="min-h-11 w-full rounded-lg border border-sable-200 bg-white px-3 py-2 text-base focus:border-tableau-700 focus:outline-tableau-700" />
+          <input id={`${id}-email`} name="email" type="email" autoComplete="email" required maxLength={254} value={email} onChange={e => { setEmail(e.target.value); if (e.target.value.trim()) trackSessionEvent("premium-formulaire-commence", { type_etablissement: "Lycée" }); }} disabled={etat === "envoi"} className="min-h-11 w-full rounded-lg border border-sable-200 bg-white px-3 py-2 text-base focus:border-tableau-700 focus:outline-tableau-700" />
           <label className="flex min-h-11 cursor-pointer items-start gap-3 text-sm leading-relaxed text-encre-800">
             <input type="checkbox" required checked={consentement} onChange={e => setConsentement(e.target.checked)} disabled={etat === "envoi"} className="mt-1 h-5 w-5 shrink-0 accent-tableau-700" />
             {CONSENTEMENT_PREMIUM}

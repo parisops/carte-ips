@@ -15,7 +15,7 @@
  * qui coupe l'un des deux scripts ne doit jamais empêcher l'autre de
  * fonctionner, ni faire échouer l'app.
  */
-export function trackEvent(path, title) {
+export function trackEvent(path, title, donnees = {}) {
   if (typeof window === "undefined") return;
 
   try {
@@ -30,8 +30,23 @@ export function trackEvent(path, title) {
   }
 
   try {
-    window.umami?.track?.(path, { title: title ?? path });
+    window.umami?.track?.(path, { title: title ?? path, ...donnees });
   } catch {
     // Tolérance identique et indépendante pour Umami.
   }
+}
+
+// Une visite correspond à la session de l’onglet, y compris ses rechargements.
+// Les clés sont des événements génériques ; aucune identité d’établissement.
+const vusEnMemoire = new Set();
+export function trackSessionEvent(path, donnees = {}) {
+  if (typeof window === "undefined") return;
+  const cle = `trajectoires:mesure:${path}:${donnees.type_etablissement ?? "tous"}`;
+  try {
+    if (window.sessionStorage?.getItem(cle)) return;
+    window.sessionStorage?.setItem(cle, "1");
+  } catch { /* Le suivi reste utilisable si le stockage est bloqué. */ }
+  if (vusEnMemoire.has(cle)) return;
+  vusEnMemoire.add(cle);
+  trackEvent(path, undefined, donnees);
 }

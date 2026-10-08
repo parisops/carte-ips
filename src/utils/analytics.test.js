@@ -22,3 +22,10 @@ describe("suivi des événements", () => {
     });
   });
 });
+
+it("ajoute le type d’établissement sans changer le nom de l’événement", () => {
+  const track = vi.fn();
+  vi.stubGlobal('window', { umami: { track } });
+  trackEvent('etablissement-selectionne', 'Collège', { type_etablissement: 'Collège' });
+  expect(track).toHaveBeenCalledWith('etablissement-selectionne', { title: 'Collège', type_etablissement: 'Collège' });
+});

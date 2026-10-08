@@ -7,6 +7,7 @@ import LogoTrajectoires from "./components/LogoTrajectoires";
 import { trackEvent } from "./utils/analytics";
 import RechercheEtablissements from "./components/RechercheEtablissements";
 import BulleAvis from "./components/BulleAvis";
+import Comparaison, { AccesComparaison } from "./components/Comparaison";
 
 const PanneauDetail = lazy(() => import("./components/PanneauDetail"));
 const MentionsLegales = lazy(() => import("./components/MentionsLegales"));
@@ -74,6 +75,7 @@ export default function App() {
           <p className="font-display text-sm font-semibold text-encre-950 md:text-base">
             Trajectoires
           </p>
+          <AccesComparaison />
         </div>
 
         <button
@@ -145,6 +147,7 @@ export default function App() {
         </Suspense>
       )}
 
+      <Comparaison />
       <BulleAvis />
     </div>
   );

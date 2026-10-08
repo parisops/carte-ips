@@ -13,6 +13,7 @@ import ResultatsScolaires from "./ResultatsScolaires";
 import InfoBulle from "./InfoBulle";
 import HistoriqueIPS from "./HistoriqueIPS";
 import Premium from "./Premium";
+import { BoutonComparer } from "./Comparaison";
 
 import { HAUTEURS_ETATS, etatLePlusProche } from "../utils/bottomSheet";
 import { nomEtablissementSansAdresse } from "../utils/displayName";
@@ -282,6 +283,8 @@ function EnTeteFiche({ etablissement, fratrie, onFermer, onSelectFratrie, compac
           </span>
         )}
       </div>
+
+      <BoutonComparer etablissement={etablissement} />
 
       {!compact && fratrie.length > 0 && (
         <div className="mt-3 border-t border-sable-200 pt-3">

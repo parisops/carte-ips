@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { joinByUai } from "../utils/joinData";
-import { trackEvent } from "../utils/analytics";
+import { trackEvent, trackSessionEvent } from "../utils/analytics";
 
 const URL_RUNTIME = `${import.meta.env.BASE_URL}data/runtime/`;
 let initialisation;
@@ -34,6 +34,30 @@ export const useEtablissementsStore = create((set, get) => ({
   historiqueResultats: {},
   historiqueResultatsCharge: false,
   aInteragi: false,
+  fichesConsultees: [],
+  comparaisonIds: [],
+  comparaisonOuverte: false,
+  comparerEtablissement: (codeUai) => {
+    const e = get().etablissements.find(e => e.code_uai === codeUai);
+    if (!e) return;
+    const premier = get().etablissements.find(e => e.code_uai === get().comparaisonIds[0]);
+    const ids = premier?.type_etablissement === e.type_etablissement ? get().comparaisonIds : [];
+    const nouveaux = ids.includes(codeUai) ? ids : [...ids.slice(0, 1), codeUai];
+    if (!ids.includes(codeUai)) {
+      const donnees = { type_etablissement: e.type_etablissement, nombre: nouveaux.length };
+      trackEvent("comparaison-ajout", undefined, donnees);
+      trackSessionEvent(nouveaux.length === 1 ? "comparaison-commencee" : "comparaison-paire-constituee", donnees);
+    }
+    set({ comparaisonIds: nouveaux, comparaisonOuverte: true });
+    get().chargerDetailsSiBesoin(codeUai);
+  },
+  ouvrirComparaison: () => set({ comparaisonOuverte: true }),
+  fermerComparaison: () => set({ comparaisonOuverte: false }),
+  retirerComparaison: (codeUai) => {
+    const e = get().etablissements.find(e => e.code_uai === codeUai);
+    trackEvent("comparaison-retrait", undefined, { type_etablissement: e?.type_etablissement });
+    set({ comparaisonIds: get().comparaisonIds.filter(id => id !== codeUai) });
+  },
   bornesIps: [50, 170],
   bornesEffectif: [0, 2000],
 
@@ -134,7 +158,14 @@ export const useEtablissementsStore = create((set, get) => ({
     const etablissement = get().etablissements.find((e) => e.code_uai === code_uai);
     if (!etablissement) return;
     if (etablissement) {
-      trackEvent("etablissement-selectionne", etablissement.type_etablissement);
+      const donnees = { type_etablissement: etablissement.type_etablissement };
+      trackEvent("etablissement-selectionne", etablissement.type_etablissement, donnees);
+      trackSessionEvent("fiche-type-consultee", donnees);
+      const visites = get().fichesConsultees;
+      if (!visites.includes(code_uai)) {
+        if (visites.length > 0) trackSessionEvent("plusieurs-fiches-consultees");
+        set({ fichesConsultees: [...visites, code_uai] });
+      }
     }
     set({ etablissementSelectionneId: code_uai, aInteragi: true });
     return get().chargerDetailsSiBesoin(code_uai);
