@@ -4,7 +4,6 @@ import { ArrowLeftRight, Plus, Search, X } from "lucide-react";
 import { useEtablissementsStore } from "../hooks/useEtablissementsStore";
 import { trackEvent, trackSessionEvent } from "../utils/analytics";
 import Soutien from "./Soutien";
-import { useSoutienStore } from "../utils/soutien";
 import { nomEtablissementSansAdresse } from "../utils/displayName";
 
 const bouton = "flex min-h-11 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tableau-700";
@@ -77,7 +76,6 @@ function DialogueComparaison() {
     if (!pret || paireMesuree.current === paire) return;
     paireMesuree.current = paire;
     const donnees = { type_etablissement: type };
-    useSoutienStore.getState().marquerComparaison();
     trackEvent("comparaison-affichee", undefined, donnees);
     trackSessionEvent("comparaison-utilisee", donnees);
   }, [pret, ids, type]);
@@ -104,7 +102,7 @@ function DialogueComparaison() {
         </div>)}
       </div>
     </div>
-    <div className="px-4 pb-6 pt-5 sm:px-6" style={{ paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))" }}>
+    <div className="px-4 pb-6 pt-5 sm:px-6" style={{ paddingBottom: "max(5rem, env(safe-area-inset-bottom))" }}>
       {selection.length < 2 && <section>
         <label htmlFor="recherche-comparaison" className="mb-2 block text-sm font-semibold">{type ? `Rechercher un autre établissement de type « ${type} »` : "Rechercher un établissement"}</label>
         <div className="relative"><Search size={18} className="absolute left-3 top-3.5 text-encre-400" /><input autoFocus id="recherche-comparaison" type="search" value={recherche} onChange={e => setRecherche(e.target.value)} placeholder="Nom, commune ou code postal" className="min-h-11 w-full rounded-xl border border-sable-200 bg-white py-3 pl-10 pr-3 text-base focus:outline-tableau-700" /></div>

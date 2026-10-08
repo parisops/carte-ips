@@ -23,7 +23,7 @@ const ENDPOINT_AVIS = ENDPOINT_CONTACT;
  * Envoi par AJAX (fetch) vers FormSubmit : reste sur la page, pas de
  * redirection, retour visuel immédiat de confirmation ou d'erreur.
  */
-export default function BulleAvis() {
+export default function BulleAvis({ variant = "bulle" }) {
   const aInteragi = useAInteragi();
   const [ouverte, setOuverte] = useState(false);
   const [nom, setNom] = useState("");
@@ -33,7 +33,7 @@ export default function BulleAvis() {
   const [envoye, setEnvoye] = useState(false);
   const [erreur, setErreur] = useState(false);
 
-  if (!aInteragi) return null;
+  if (!aInteragi && variant === "bulle") return null;
 
   const ouvrir = () => {
     trackEvent("bulle-avis-ouverte");
@@ -75,10 +75,10 @@ export default function BulleAvis() {
     <>
       <button
         onClick={ouvrir}
-        className="pointer-events-auto fixed bottom-4 right-4 z-[1300] flex h-12 w-12 items-center justify-center rounded-full bg-encre-950 text-sable-50 shadow-panel transition-transform hover:scale-105 active:scale-95 md:bottom-5 md:right-5"
+        className={variant === "lien" ? "mt-2 min-h-11 rounded-lg bg-sable-100 px-3 text-sm font-semibold text-tableau-700 hover:bg-sable-200" : "pointer-events-auto fixed bottom-4 right-4 z-[1300] flex h-12 w-12 items-center justify-center rounded-full bg-encre-950 text-sable-50 shadow-panel"}
         aria-label="Contacter l'équipe Trajectoires"
       >
-        <MessageCircle size={20} />
+        {variant === "lien" ? "Contacter l’équipe" : <MessageCircle size={20} />}
       </button>
 
       {ouverte && (

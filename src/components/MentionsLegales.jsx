@@ -1,3 +1,4 @@
+import BulleAvis from "./BulleAvis";
 import { X } from "lucide-react";
 
 export default function MentionsLegales({ onClose }) {
@@ -49,9 +50,11 @@ export default function MentionsLegales({ onClose }) {
           <section>
             <h3 className="mb-1 font-semibold text-encre-950">Contact</h3>
             <p>
-              Pour toute question, utilisez le bouton de contact de Trajectoires. Le nom et l’adresse email sont facultatifs ; une adresse email permet de vous répondre.
+              Pour toute question, utilisez le formulaire ci-dessous. Le nom et l’adresse email sont facultatifs ; une adresse email permet de vous répondre.
             </p>
           </section>
+
+          <BulleAvis variant="lien" />
 
           <section>
             <h3 className="mb-1 font-semibold text-encre-950">Données affichées</h3>
