@@ -128,6 +128,9 @@ export const useEtablissementsStore = create((set, get) => ({
         if (chemin === "departement") filtres.recherche = "";
       }
       let interactionDetectee = false;
+      if (chemin !== "recherche" && JSON.stringify(valeur) !== JSON.stringify(parts.length === 1 ? state.filtres[parts[0]] : state.filtres[parts[0]][parts[1]])) {
+        trackEvent("journey_filter_changed", undefined, { filter_name: chemin.replace(/\.(.*)/, "_$1"), action: valeur === false || valeur === "Tous" ? "removed" : "applied" });
+      }
       if (chemin === "departement" && valeur !== "Tous") {
         trackEvent("departement-selectionne", valeur);
         interactionDetectee = true;
@@ -146,7 +149,8 @@ export const useEtablissementsStore = create((set, get) => ({
       return { filtres, etablissementSelectionneId: ["recherche", "departement"].includes(chemin) ? null : state.etablissementSelectionneId, aInteragi: state.aInteragi || interactionDetectee };
     }),
 
-  resetFiltres: () =>
+  resetFiltres: () => {
+    trackEvent("journey_filters_reset");
     set((state) => ({
       etablissementSelectionneId: null,
       filtres: {
@@ -154,7 +158,8 @@ export const useEtablissementsStore = create((set, get) => ({
         ipsMin: state.bornesIps[0],
         departementsDisponibles: state.filtres.departementsDisponibles,
       },
-    })),
+    }));
+  },
 
   selectionnerEtablissement: (code_uai) => {
     const etablissement = get().etablissements.find((e) => e.code_uai === code_uai);
