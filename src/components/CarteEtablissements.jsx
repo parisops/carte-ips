@@ -55,7 +55,7 @@ function suivreInteractionCarte() {
   if (typeof window === "undefined") return;
   if (sessionStorage.getItem(CLE_INTERACTION_ENVOYEE)) return;
   sessionStorage.setItem(CLE_INTERACTION_ENVOYEE, "1");
-  trackEvent("carte-interaction");
+  trackEvent("map_interacted");
 }
 
 function creerIcone(site, estSelectionne, effectifMin, effectifMax) {
