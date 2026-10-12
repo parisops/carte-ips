@@ -32,6 +32,7 @@ export default function RechercheEtablissements() {
   const selectionnerSuggestion = s => {
     clearTimeout(timer.current);
     trackEvent("journey_search_result_selected", undefined, { result_type: s.type, suggestion_count_bucket: suggestions.length === 0 ? "0" : suggestions.length < 5 ? "1-4" : suggestions.length < 10 ? "5-9" : "10+" });
+    trackEvent("journey_search_completed", undefined, { result_type: s.type, result: "selected" });
     choisir(s);
     setTexte(s.label);
     setOuvert(false);
@@ -39,6 +40,9 @@ export default function RechercheEtablissements() {
     input.current?.blur();
   };
   const menu = ouvert && texte.trim() && texte === filtres.recherche;
+  useEffect(() => {
+    if (menu && suggestions.length === 0) trackSessionEvent("journey_search_no_suggestions", { entry_point: "main_search" });
+  }, [menu, suggestions.length]);
   return (
     <div ref={racine} className="relative">
       <div className="relative rounded-xl bg-sable-50 shadow-panel">
@@ -93,7 +97,7 @@ export default function RechercheEtablissements() {
           </button>
           {listeCommune && <ul className="max-h-[28dvh] overflow-y-auto overscroll-contain border-t border-sable-200">
             {resultats.length === 0 && <li className="p-3 text-sm text-encre-600">Aucun établissement avec ces filtres. Modifiez-les ou réinitialisez-les.</li>}
-            {resultats.map(e => <li key={e.code_uai}><button onClick={() => selectionner(e.code_uai)} className="w-full px-3 py-3 text-left text-sm text-encre-950 hover:bg-sable-200">{e.nom_etablissement}<span className="block text-xs text-encre-600">{e.type_etablissement} · {e.statut}</span></button></li>)}
+            {resultats.map(e => <li key={e.code_uai}><button onClick={() => { trackEvent("journey_search_list_school_selected", undefined, { school_type: e.type_etablissement }); selectionner(e.code_uai); }} className="w-full px-3 py-3 text-left text-sm text-encre-950 hover:bg-sable-200">{e.nom_etablissement}<span className="block text-xs text-encre-600">{e.type_etablissement} · {e.statut}</span></button></li>)}
           </ul>}
         </div>
       )}
