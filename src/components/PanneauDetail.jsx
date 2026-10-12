@@ -12,7 +12,7 @@ import EffectifsParNiveau from "./EffectifsParNiveau";
 import ResultatsScolaires from "./ResultatsScolaires";
 import InfoBulle from "./InfoBulle";
 import HistoriqueIPS from "./HistoriqueIPS";
-import Premium from "./Premium";
+import { trackEvent, trackSessionEvent } from "../utils/analytics";
 import { BoutonComparer } from "./Comparaison";
 
 import { HAUTEURS_ETATS, etatLePlusProche } from "../utils/bottomSheet";
@@ -76,6 +76,11 @@ export default function PanneauDetail({ variant = "flottant-desktop" }) {
   const { setEtat: changerEtat } = sheet;
 
   const dernierCodeUai = useRef(null);
+  useEffect(() => {
+    if (etablissement && detailsCharges) {
+      trackSessionEvent("journey_school_details_loaded", { school_type: etablissement.type_etablissement });
+    }
+  }, [etablissement?.code_uai, etablissement?.type_etablissement, detailsCharges]);
   useEffect(() => {
     if (etablissement && etablissement.code_uai !== dernierCodeUai.current) {
       dernierCodeUai.current = etablissement.code_uai;
@@ -317,7 +322,7 @@ function ContenuFiche({ etablissement, parite, dataFilieres }) {
 
   return (
     <div className="space-y-6">
-      {etablissement.type_etablissement === "Lycée" && <Premium />}
+
       <ResultatsScolaires resultats={etablissement} typeEtablissement={etablissement.type_etablissement} />
 
       {etablissement.ips_etablissement != null ? (
@@ -365,7 +370,7 @@ function ContenuFiche({ etablissement, parite, dataFilieres }) {
         </section>
       )}
 
-      <details>
+      <details onToggle={e => { if (e.currentTarget.open) trackEvent("journey_school_section_opened", undefined, { section: "demographics", school_type: etablissement.type_etablissement }); }}>
         <summary className="cursor-pointer mb-2 flex items-center gap-1.5 font-body text-xs font-semibold uppercase tracking-wide text-encre-400">
           <Users size={13} /> Démographie
         </summary>
