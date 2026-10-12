@@ -15,7 +15,7 @@ export default function Soutien({ contexte = "carte", typeEtablissement }) {
   const visible = (aInteragi || contexte === "comparaison") && !(contexte === "carte" && comparaisonOuverte);
   useEffect(() => {
     if (!visible) return;
-    trackSessionEvent("soutien-bouton-vu", { contexte });
+    trackSessionEvent("support_button_viewed", { contexte });
   }, [visible, contexte]);
   useEffect(() => {
     if (!visible || ouvert || !animationSoutienAutorisee(rappel)) return;
@@ -37,7 +37,7 @@ export default function Soutien({ contexte = "carte", typeEtablissement }) {
     : "bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] md:bottom-5 md:right-5";
   const donnees = { contexte, ...(typeEtablissement ? { type_etablissement: typeEtablissement } : {}) };
   return <>
-    <button onClick={() => { trackEvent("soutien-ouvert", undefined, donnees); trackEvent("journey_support_opened", undefined, { source: contexte }); setOuvert(true); }} aria-label="Offrir un café pour soutenir Trajectoires" title="Soutenir Trajectoires" className={`fixed right-4 z-[1600] flex h-12 w-12 items-center justify-center rounded-full border border-white/30 bg-tableau-700 text-white shadow-panel transition-transform hover:scale-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tableau-700 ${position}`}>
+    <button onClick={() => { trackEvent("support_opened", undefined, { source: contexte }); setOuvert(true); }} aria-label="Offrir un café pour soutenir Trajectoires" title="Soutenir Trajectoires" className={`fixed right-4 z-[1600] flex h-12 w-12 items-center justify-center rounded-full border border-white/30 bg-tableau-700 text-white shadow-panel transition-transform hover:scale-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tableau-700 ${position}`}>
       <Coffee size={23} aria-hidden="true" className={agite ? "cafe-agite" : ""} />
     </button>
     {ouvert && createPortal(<MessageSoutien donnees={donnees} onClose={() => setOuvert(false)} />, document.body)}
@@ -49,12 +49,12 @@ function MessageSoutien({ donnees, onClose }) {
   useEffect(() => {
     const precedent = document.activeElement;
     ref.current.showModal();
-    trackEvent("soutien-vu", undefined, donnees);
+    trackEvent("support_dialog_viewed", undefined, donnees);
     return () => { if (precedent?.isConnected) precedent.focus(); };
   }, []);
   const fermer = () => {
     useSoutienStore.getState().reporter(30);
-    trackEvent("soutien-ferme", undefined, donnees);
+    trackEvent("support_closed", undefined, donnees);
     onClose();
   };
   return <dialog ref={ref} onCancel={event => { event.preventDefault(); fermer(); }} onClick={event => { if (event.target === ref.current) { const r = ref.current.getBoundingClientRect(); if (event.clientX < r.left || event.clientX > r.right || event.clientY < r.top || event.clientY > r.bottom) fermer(); } }} aria-labelledby="soutien-titre" className="m-auto w-[calc(100%-2rem)] max-w-sm rounded-2xl border border-sable-200 bg-sable-50 p-5 font-body text-encre-950 shadow-panel backdrop:bg-encre-950/35">
@@ -65,7 +65,6 @@ function MessageSoutien({ donnees, onClose }) {
     <p className="mt-3 text-sm leading-relaxed text-encre-800">Je développe ce site pour faciliter l’accès aux données scolaires et continuer à l’enrichir. Un petit café m’aide à le faire vivre. Merci !</p>
     <a href="https://ko-fi.com/parisops" target="_blank" rel="noopener noreferrer" onClick={() => {
       useSoutienStore.getState().reporter(90);
-      trackEvent("soutien-clic", undefined, donnees); trackEvent("journey_support_outbound", undefined, { source: donnees.contexte });
       onClose();
     }} className="mt-5 flex min-h-11 items-center justify-center gap-2 rounded-lg bg-tableau-700 px-4 py-3 text-sm font-semibold text-white hover:bg-encre-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tableau-700">Offrir un café <ArrowUpRight size={16} aria-hidden="true" /><span className="sr-only">sur Ko-fi, dans un nouvel onglet</span></a>
     <button onClick={fermer} className="mt-2 min-h-11 w-full rounded-lg text-sm text-encre-600 hover:bg-sable-200">Plus tard</button>
