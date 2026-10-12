@@ -5,7 +5,13 @@ export function trackEvent(name, _title, properties = {}) {
     value !== undefined && value !== null && (typeof value === "string" || typeof value === "number" || typeof value === "boolean")
   ).map(([key, value]) => {
     const normalizedKey = key === "type_etablissement" ? "school_type" : key === "nombre" ? "school_count" : key === "contexte" ? "source" : key;
-    const normalizedValue = normalizedKey === "school_type" ? ({ "École": "primary", "Collège": "middle", "Lycée": "high" }[value] ?? "other") :
+    const normalizedFilter = normalizedKey === "filter_name" ? String(value)
+      .replaceAll("École", "primary").replaceAll("Collège", "middle").replaceAll("Lycée", "high")
+      .replaceAll("Privé", "private").replaceAll("Public", "public")
+      .replace(/^types_/, "school_type_").replace(/^statuts_/, "status_")
+      .replace(/^dispositifs_/, "program_").replace("ipsMin", "ips_min")
+      .replace("departement", "department") : value;
+    const normalizedValue = normalizedKey === "filter_name" ? normalizedFilter : normalizedKey === "school_type" ? ({ "École": "primary", "Collège": "middle", "Lycée": "high" }[value] ?? "other") :
       normalizedKey === "search_type" || normalizedKey === "result_type" ? ({ "commune": "city", "etablissement": "school" }[value] ?? value) : value;
     return [normalizedKey, normalizedValue];
   }));
