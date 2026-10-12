@@ -88,3 +88,18 @@ Les jalons de détail et comparaison conservent une définition précise : un pa
 - Vérifier les fiches École/Collège : aucun changement involontaire d'affichage.
 - Vérifier les jalons d'ouverture de comparaison et de consultation détaillée.
 - Vérifier qu'un clic Ko-fi n'enregistre pas une conversion financière.
+
+## KPI : exploration qualifiée par niveau scolaire
+
+Trois niveaux suivis séparément : École, Collège, Lycée.
+
+| Événement | Moment | Propriétés |
+| --- | --- | --- |
+| `journey_school_distinct_opened` | Première consultation de chaque établissement **distinct dans l'onglet** | `school_type` (École, Collège, Lycée), `ordinal_bucket` (`first`, `second`, `third_or_more`) |
+| `journey_school_level_qualified` | Deuxième établissement distinct du **même niveau** ouvert dans l'onglet | `type_etablissement`, `rule=two_distinct_schools_same_level` |
+
+**Lecture** : segmenter `journey_school_distinct_opened` par `school_type` pour mesurer les fiches distinctes par niveau; filtrer `ordinal_bucket=first` pour les premières découvertes de chaque niveau. Segmenter `journey_school_level_qualified` par `type_etablissement` pour estimer combien d'onglets explorent au moins deux établissements de ce niveau. Pour estimer un taux de qualification, comparer les sessions de `journey_school_level_qualified` aux sessions comportant une première découverte du même niveau, avec précaution : sessions Umami et sessionStorage de l'onglet n'ont pas exactement la même durée.
+
+Aucun UAI ni nom d'établissement n'est envoyé. Le nombre distinct est calculé dans le navigateur; il est réinitialisé au rechargement de l'app (état Zustand), tandis que le jalon qualifié est dédupliqué sur la session de l'onglet. Ne pas interpréter le nombre brut comme un nombre de visiteurs uniques ni comme une rétention.
+
+**Recette** : ouvrir deux collèges distincts puis deux écoles distinctes; vérifier un `journey_school_level_qualified` par type. Ouvrir trois lycées distincts; vérifier les valeurs `first`, `second`, `third_or_more` et un seul jalon qualifié Lycée. Réouvrir la même fiche sans compter un nouvel établissement distinct.
