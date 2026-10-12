@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { Search, MapPin, School, X } from "lucide-react";
+import { trackEvent, trackSessionEvent } from "../utils/analytics";
 import { useEtablissementsStore, useSuggestionsRecherche, useEtablissementsFiltres } from "../hooks/useEtablissementsStore";
 
 export default function RechercheEtablissements() {
@@ -30,6 +31,7 @@ export default function RechercheEtablissements() {
   useEffect(() => setActif(-1), [filtres.recherche]);
   const selectionnerSuggestion = s => {
     clearTimeout(timer.current);
+    trackEvent("journey_search_result_selected", undefined, { result_type: s.type, suggestion_count_bucket: suggestions.length === 0 ? "0" : suggestions.length < 5 ? "1-4" : suggestions.length < 10 ? "5-9" : "10+" });
     choisir(s);
     setTexte(s.label);
     setOuvert(false);
@@ -47,7 +49,7 @@ export default function RechercheEtablissements() {
           aria-activedescendant={menu && actif >= 0 ? `${id}-${actif}` : undefined}
           placeholder="Ville, code postal, établissement…"
           value={texte}
-          onFocus={() => setOuvert(true)}
+          onFocus={() => { setOuvert(true); trackSessionEvent("journey_search_focused", { entry_point: "main_search" }); }}
           onChange={e => {
             const valeur = e.target.value;
             setTexte(valeur); setOuvert(true); setActif(-1);
@@ -65,7 +67,7 @@ export default function RechercheEtablissements() {
             if (e.key === "Enter") {
               e.preventDefault(); clearTimeout(timer.current);
               if (menu && actif >= 0) selectionnerSuggestion(suggestions[actif]);
-              else { setFiltre("recherche", texte); setOuvert(true); }
+              else { setFiltre("recherche", texte); setOuvert(true); trackEvent("journey_search_submitted", undefined, { has_suggestions: suggestions.length > 0, search_length_bucket: texte.trim().length < 4 ? "short" : texte.trim().length < 12 ? "medium" : "long" }); }
             }
           }}
           className="h-12 w-full rounded-xl border border-sable-200 bg-transparent pl-10 pr-11 text-base text-encre-950 placeholder:text-encre-600 focus:outline-none focus:ring-2 focus:ring-encre-600"
