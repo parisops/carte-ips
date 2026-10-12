@@ -78,6 +78,7 @@ function DialogueComparaison() {
     const donnees = { type_etablissement: type };
     trackEvent("comparaison-affichee", undefined, donnees);
     trackSessionEvent("comparaison-utilisee", donnees);
+    trackSessionEvent("journey_comparison_completed", { school_type: type, school_count: 2 });
   }, [pret, ids, type]);
   const suggestions = useMemo(() => {
     const termes = normaliser(recherche).split(" ").filter(Boolean);
