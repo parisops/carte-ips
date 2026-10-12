@@ -36,7 +36,7 @@ export default function BulleAvis({ variant = "bulle" }) {
   if (!aInteragi && variant === "bulle") return null;
 
   const ouvrir = () => {
-    trackEvent("bulle-avis-ouverte");
+    trackEvent("feedback_opened");
     setOuverte(true);
   };
 
@@ -62,7 +62,7 @@ export default function BulleAvis({ variant = "bulle" }) {
         }),
       });
       if (!reponse.ok) throw new Error("Échec de l'envoi");
-      trackEvent("bulle-avis-envoyee");
+      trackEvent("feedback_submitted");
       setEnvoye(true);
     } catch {
       setErreur(true);

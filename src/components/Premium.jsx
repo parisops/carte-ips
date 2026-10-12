@@ -21,7 +21,7 @@ export default function Premium() {
     if (typeof IntersectionObserver === "undefined") return;
     const observer = new IntersectionObserver(([entree]) => {
       if (entree.isIntersecting && entree.intersectionRatio >= 0.5) {
-        compterUneFois("premium-vu");
+        compterUneFois("premium_viewed");
         observer.disconnect();
       }
     }, { threshold: 0.5 });
@@ -37,9 +37,9 @@ export default function Premium() {
       <h3 className="font-display text-lg font-semibold text-encre-950">Comparez vos lycées favoris</h3>
       <p className="mt-2 text-sm leading-relaxed text-encre-800">Comprenez leurs différences et préparez votre choix avec une comparaison claire et un dossier PDF à partager en famille.</p>
       <button type="button" onClick={() => {
-        compterUneFois("premium-vu");
+        compterUneFois("premium_viewed");
         // Chaque clic d'ouverture compte, y compris après une fermeture.
-        trackEvent("premium-ouvert");
+        trackEvent("premium_opened");
         setOuvert(true);
       }} className="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-tableau-700 px-3 py-2 text-sm font-semibold text-white hover:bg-encre-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tableau-700">
         Découvrir le Premium <ArrowRight size={17} aria-hidden="true" />
@@ -80,13 +80,13 @@ function PresentationPremium({ onClose }) {
     const delai = setTimeout(() => controller.abort(), 15000);
     try {
       await inscrirePremium(email, consentement, controller.signal);
-      trackEvent("premium-inscription");
+      trackEvent("premium_signup_completed");
       setEmail("");
       setEtat("succes");
     } catch {
       if (controller.signal.reason === "fermeture") return;
       setEtat("erreur");
-      trackEvent("premium-erreur");
+      trackEvent("premium_signup_failed");
     } finally {
       clearTimeout(delai);
       requete.current = null;
@@ -121,7 +121,7 @@ function PresentationPremium({ onClose }) {
           <p className="text-sm font-semibold">Être prévenu du lancement</p>
           <p className="text-sm text-encre-800">L’inscription à la liste d’attente est gratuite et sans engagement. Le Premium sera proposé en paiement unique, sans abonnement. Tarif à définir.</p>
           <label htmlFor={`${id}-email`} className="block text-sm font-medium">Votre adresse email</label>
-          <input id={`${id}-email`} name="email" type="email" autoComplete="email" required maxLength={254} value={email} onChange={e => { setEmail(e.target.value); if (e.target.value.trim()) trackSessionEvent("premium-formulaire-commence", { type_etablissement: "Lycée" }); }} disabled={etat === "envoi"} className="min-h-11 w-full rounded-lg border border-sable-200 bg-white px-3 py-2 text-base focus:border-tableau-700 focus:outline-tableau-700" />
+          <input id={`${id}-email`} name="email" type="email" autoComplete="email" required maxLength={254} value={email} onChange={e => { setEmail(e.target.value); if (e.target.value.trim()) trackSessionEvent("premium_form_started", { type_etablissement: "Lycée" }); }} disabled={etat === "envoi"} className="min-h-11 w-full rounded-lg border border-sable-200 bg-white px-3 py-2 text-base focus:border-tableau-700 focus:outline-tableau-700" />
           <label className="flex min-h-11 cursor-pointer items-start gap-3 text-sm leading-relaxed text-encre-800">
             <input type="checkbox" required checked={consentement} onChange={e => setConsentement(e.target.checked)} disabled={etat === "envoi"} className="mt-1 h-5 w-5 shrink-0 accent-tableau-700" />
             {CONSENTEMENT_PREMIUM}

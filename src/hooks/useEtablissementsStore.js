@@ -45,9 +45,7 @@ export const useEtablissementsStore = create((set, get) => ({
     const nouveaux = ids.includes(codeUai) ? ids : [...ids.slice(0, 1), codeUai];
     if (!ids.includes(codeUai)) {
       const donnees = { type_etablissement: e.type_etablissement, nombre: nouveaux.length };
-      trackEvent("comparaison-ajout", undefined, donnees);
-      trackSessionEvent(nouveaux.length === 1 ? "comparaison-commencee" : "comparaison-paire-constituee", donnees);
-      trackSessionEvent(nouveaux.length === 1 ? "journey_comparison_started" : "journey_comparison_pair_ready", { school_type: e.type_etablissement });
+      trackSessionEvent(nouveaux.length === 1 ? "comparison_started" : "comparison_pair_ready", { school_type: e.type_etablissement });
     }
     set({ comparaisonIds: nouveaux, comparaisonOuverte: true });
     get().chargerDetailsSiBesoin(codeUai);
@@ -56,7 +54,7 @@ export const useEtablissementsStore = create((set, get) => ({
   fermerComparaison: () => set({ comparaisonOuverte: false }),
   retirerComparaison: (codeUai) => {
     const e = get().etablissements.find(e => e.code_uai === codeUai);
-    trackEvent("comparaison-retrait", undefined, { type_etablissement: e?.type_etablissement });
+    trackEvent("comparison_school_removed", undefined, { type_etablissement: e?.type_etablissement });
     set({ comparaisonIds: get().comparaisonIds.filter(id => id !== codeUai) });
   },
   bornesIps: [50, 170],
@@ -129,20 +127,16 @@ export const useEtablissementsStore = create((set, get) => ({
       }
       let interactionDetectee = false;
       if (chemin !== "recherche" && JSON.stringify(valeur) !== JSON.stringify(parts.length === 1 ? state.filtres[parts[0]] : state.filtres[parts[0]][parts[1]])) {
-        trackEvent("journey_filter_changed", undefined, { filter_name: chemin.replace(/\.(.*)/, "_$1"), action: valeur === false || valeur === "Tous" ? "removed" : "applied" });
+        trackEvent("filter_changed", undefined, { filter_name: chemin.replace(/\.(.*)/, "_$1"), action: valeur === false || valeur === "Tous" ? "removed" : "applied" });
       }
       if (chemin === "departement" && valeur !== "Tous") {
-        trackEvent("departement-selectionne", valeur);
         interactionDetectee = true;
       } else if (chemin === "recherche" && valeur.trim() !== "" && state.filtres.recherche.trim() === "") {
-        trackEvent("filtre-recherche-utilisee");
-        trackSessionEvent("journey_search_started", { entry_point: "main_search" });
+        trackSessionEvent("search_started", { entry_point: "main_search" });
         interactionDetectee = true;
       } else if (parts[0] === "dispositifs" && valeur === true) {
-        trackEvent("filtre-dispositif-actif", parts[1]);
         interactionDetectee = true;
       } else if (chemin === "ipsMin" && valeur !== state.bornesIps[0]) {
-        trackEvent("filtre-ips-ajuste");
         interactionDetectee = true;
       }
 
@@ -150,7 +144,7 @@ export const useEtablissementsStore = create((set, get) => ({
     }),
 
   resetFiltres: () => {
-    trackEvent("journey_filters_reset");
+    trackEvent("filters_reset");
     set((state) => ({
       etablissementSelectionneId: null,
       filtres: {
@@ -166,23 +160,20 @@ export const useEtablissementsStore = create((set, get) => ({
     if (!etablissement) return;
     if (etablissement) {
       const donnees = { type_etablissement: etablissement.type_etablissement };
-      trackEvent("etablissement-selectionne", etablissement.type_etablissement, donnees);
       if (get().etablissementSelectionneId !== code_uai) {
-        trackEvent("journey_school_opened", undefined, { school_type: etablissement.type_etablissement, source: get().filtres.rechercheUai === code_uai ? "search" : "map_or_related" });
+        trackEvent("school_opened", undefined, { school_type: etablissement.type_etablissement, source: get().filtres.rechercheUai === code_uai ? "search" : "map_or_related" });
       }
-      trackSessionEvent("fiche-type-consultee", donnees);
       const visites = get().fichesConsultees;
       if (!visites.includes(code_uai)) {
         const visitesMemeNiveau = visites.filter(id => get().etablissements.find(e => e.code_uai === id)?.type_etablissement === etablissement.type_etablissement).length;
-        trackEvent("journey_school_distinct_opened", undefined, { school_type: etablissement.type_etablissement, ordinal_bucket: visitesMemeNiveau === 0 ? "first" : visitesMemeNiveau === 1 ? "second" : "third_or_more" });
+        trackEvent("school_distinct_opened", undefined, { school_type: etablissement.type_etablissement, ordinal_bucket: visitesMemeNiveau === 0 ? "first" : visitesMemeNiveau === 1 ? "second" : "third_or_more" });
         if (visitesMemeNiveau === 1) {
-          trackSessionEvent("journey_school_level_qualified", { type_etablissement: etablissement.type_etablissement, rule: "two_distinct_schools_same_level" });
+          trackSessionEvent("school_level_qualified", { type_etablissement: etablissement.type_etablissement, rule: "two_distinct_schools_same_level" });
         }
         if (visites.length > 0) {
-          trackSessionEvent("plusieurs-fiches-consultees");
-          trackSessionEvent("journey_exploration_qualified", { rule: "two_distinct_schools" });
+          trackSessionEvent("exploration_qualified", { rule: "two_distinct_schools" });
         }
-        if (visites.length === 0) trackSessionEvent("journey_first_school_opened", { school_type: etablissement.type_etablissement });
+        if (visites.length === 0) trackSessionEvent("first_school_opened", { school_type: etablissement.type_etablissement });
         set({ fichesConsultees: [...visites, code_uai] });
       }
     }
@@ -208,8 +199,6 @@ export const useEtablissementsStore = create((set, get) => ({
       },
     }));
     if (suggestion.type === "etablissement") get().selectionnerEtablissement(suggestion.codeUai);
-    trackEvent("suggestion-recherche-choisie", suggestion.type);
-    trackEvent("journey_search_selected", undefined, { search_type: suggestion.type });
   },
 }));
 
