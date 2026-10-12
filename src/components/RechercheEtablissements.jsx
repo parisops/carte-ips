@@ -31,8 +31,7 @@ export default function RechercheEtablissements() {
   useEffect(() => setActif(-1), [filtres.recherche]);
   const selectionnerSuggestion = s => {
     clearTimeout(timer.current);
-    trackEvent("journey_search_result_selected", undefined, { result_type: s.type, suggestion_count_bucket: suggestions.length === 0 ? "0" : suggestions.length < 5 ? "1-4" : suggestions.length < 10 ? "5-9" : "10+" });
-    trackEvent("journey_search_completed", undefined, { result_type: s.type, result: "selected" });
+    trackEvent("search_result_selected", undefined, { result_type: s.type, suggestion_count_bucket: suggestions.length === 0 ? "0" : suggestions.length < 5 ? "1-4" : suggestions.length < 10 ? "5-9" : "10+" });
     choisir(s);
     setTexte(s.label);
     setOuvert(false);
@@ -41,7 +40,7 @@ export default function RechercheEtablissements() {
   };
   const menu = ouvert && texte.trim() && texte === filtres.recherche;
   useEffect(() => {
-    if (menu && suggestions.length === 0) trackSessionEvent("journey_search_no_suggestions", { entry_point: "main_search" });
+    if (menu && suggestions.length === 0) trackSessionEvent("search_no_suggestions", { entry_point: "main_search" });
   }, [menu, suggestions.length]);
   return (
     <div ref={racine} className="relative">
@@ -53,7 +52,7 @@ export default function RechercheEtablissements() {
           aria-activedescendant={menu && actif >= 0 ? `${id}-${actif}` : undefined}
           placeholder="Ville, code postal, établissement…"
           value={texte}
-          onFocus={() => { setOuvert(true); trackSessionEvent("journey_search_focused", { entry_point: "main_search" }); }}
+          onFocus={() => { setOuvert(true); trackSessionEvent("search_focused", { entry_point: "main_search" }); }}
           onChange={e => {
             const valeur = e.target.value;
             setTexte(valeur); setOuvert(true); setActif(-1);
@@ -71,7 +70,7 @@ export default function RechercheEtablissements() {
             if (e.key === "Enter") {
               e.preventDefault(); clearTimeout(timer.current);
               if (menu && actif >= 0) selectionnerSuggestion(suggestions[actif]);
-              else { setFiltre("recherche", texte); setOuvert(true); trackEvent("journey_search_submitted", undefined, { has_suggestions: suggestions.length > 0, search_length_bucket: texte.trim().length < 4 ? "short" : texte.trim().length < 12 ? "medium" : "long" }); }
+              else { setFiltre("recherche", texte); setOuvert(true); trackEvent("search_submitted", undefined, { has_suggestions: suggestions.length > 0, search_length_bucket: texte.trim().length < 4 ? "short" : texte.trim().length < 12 ? "medium" : "long" }); }
             }
           }}
           className="h-12 w-full rounded-xl border border-sable-200 bg-transparent pl-10 pr-11 text-base text-encre-950 placeholder:text-encre-600 focus:outline-none focus:ring-2 focus:ring-encre-600"
@@ -97,7 +96,7 @@ export default function RechercheEtablissements() {
           </button>
           {listeCommune && <ul className="max-h-[28dvh] overflow-y-auto overscroll-contain border-t border-sable-200">
             {resultats.length === 0 && <li className="p-3 text-sm text-encre-600">Aucun établissement avec ces filtres. Modifiez-les ou réinitialisez-les.</li>}
-            {resultats.map(e => <li key={e.code_uai}><button onClick={() => { trackEvent("journey_search_list_school_selected", undefined, { school_type: e.type_etablissement }); selectionner(e.code_uai); }} className="w-full px-3 py-3 text-left text-sm text-encre-950 hover:bg-sable-200">{e.nom_etablissement}<span className="block text-xs text-encre-600">{e.type_etablissement} · {e.statut}</span></button></li>)}
+            {resultats.map(e => <li key={e.code_uai}><button onClick={() => { trackEvent("search_list_school_selected", undefined, { school_type: e.type_etablissement }); selectionner(e.code_uai); }} className="w-full px-3 py-3 text-left text-sm text-encre-950 hover:bg-sable-200">{e.nom_etablissement}<span className="block text-xs text-encre-600">{e.type_etablissement} · {e.statut}</span></button></li>)}
           </ul>}
         </div>
       )}
