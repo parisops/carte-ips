@@ -173,6 +173,11 @@ export const useEtablissementsStore = create((set, get) => ({
       trackSessionEvent("fiche-type-consultee", donnees);
       const visites = get().fichesConsultees;
       if (!visites.includes(code_uai)) {
+        const visitesMemeNiveau = visites.filter(id => get().etablissements.find(e => e.code_uai === id)?.type_etablissement === etablissement.type_etablissement).length;
+        trackEvent("journey_school_distinct_opened", undefined, { school_type: etablissement.type_etablissement, ordinal_bucket: visitesMemeNiveau === 0 ? "first" : visitesMemeNiveau === 1 ? "second" : "third_or_more" });
+        if (visitesMemeNiveau === 1) {
+          trackSessionEvent("journey_school_level_qualified", { type_etablissement: etablissement.type_etablissement, rule: "two_distinct_schools_same_level" });
+        }
         if (visites.length > 0) {
           trackSessionEvent("plusieurs-fiches-consultees");
           trackSessionEvent("journey_exploration_qualified", { rule: "two_distinct_schools" });
