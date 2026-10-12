@@ -78,7 +78,7 @@ export default function PanneauDetail({ variant = "flottant-desktop" }) {
   const dernierCodeUai = useRef(null);
   useEffect(() => {
     if (etablissement && detailsCharges) {
-      trackSessionEvent("journey_school_details_loaded", { school_type: etablissement.type_etablissement });
+      trackSessionEvent("school_details_loaded", { school_type: etablissement.type_etablissement });
     }
   }, [etablissement?.code_uai, etablissement?.type_etablissement, detailsCharges]);
   useEffect(() => {
@@ -370,7 +370,7 @@ function ContenuFiche({ etablissement, parite, dataFilieres }) {
         </section>
       )}
 
-      <details onToggle={e => { if (e.currentTarget.open) trackEvent("journey_school_section_opened", undefined, { section: "demographics", school_type: etablissement.type_etablissement }); }}>
+      <details onToggle={e => { if (e.currentTarget.open) trackEvent("school_section_opened", undefined, { section: "demographics", school_type: etablissement.type_etablissement }); }}>
         <summary className="cursor-pointer mb-2 flex items-center gap-1.5 font-body text-xs font-semibold uppercase tracking-wide text-encre-400">
           <Users size={13} /> Démographie
         </summary>
