@@ -18,7 +18,7 @@ export function BoutonComparer({ etablissement }) {
     if (!window.IntersectionObserver) return;
     const observer = new IntersectionObserver(([entree]) => {
       if (entree.isIntersecting && entree.intersectionRatio >= .5) {
-        trackSessionEvent("comparaison-proposee", { type_etablissement: etablissement.type_etablissement });
+        trackSessionEvent("comparison_offered", { type_etablissement: etablissement.type_etablissement });
         observer.disconnect();
       }
     }, { threshold: .5 });
@@ -65,8 +65,7 @@ function DialogueComparaison() {
     document.body.style.overflow = "hidden";
     ref.current.showModal();
     ref.current.querySelector("input")?.focus();
-    trackEvent("comparaison-ouverte", undefined, { type_etablissement: type });
-    trackEvent("journey_comparison_dialog_opened", undefined, { school_type: type ?? "none", school_count: ids.length });
+    trackEvent("comparison_dialog_opened", undefined, { school_type: type ?? "none", school_count: ids.length });
     return () => {
       document.body.style.overflow = overflow;
       if (precedent?.isConnected) precedent.focus();
@@ -77,10 +76,7 @@ function DialogueComparaison() {
     if (!pret || paireMesuree.current === paire) return;
     paireMesuree.current = paire;
     const donnees = { type_etablissement: type };
-    trackEvent("comparaison-affichee", undefined, donnees);
-    trackEvent("journey_comparison_result_viewed", undefined, { school_type: type, school_count: 2 });
-    trackSessionEvent("comparaison-utilisee", donnees);
-    trackSessionEvent("journey_comparison_completed", { school_type: type, school_count: 2 });
+    trackSessionEvent("comparison_completed", { school_type: type, school_count: 2 });
   }, [pret, ids, type]);
   const suggestions = useMemo(() => {
     const termes = normaliser(recherche).split(" ").filter(Boolean);
