@@ -49,13 +49,7 @@ function nomQuartierParis(etablissement) {
     : "Paris (arrondissement non précisé)";
 }
 
-// Suivi GoatCounter : un seul événement "carte-interaction" par visite, à la
-// première interaction réelle avec la carte (clic sur un marqueur ou une
-// bulle département). sessionStorage (pas localStorage) : on veut mesurer
-// l'engagement PAR VISITE, pas seulement à la toute première visite du site.
-// Passe par trackEvent() (src/utils/analytics.js) comme tous les autres
-// événements custom de l'app, pour rester regroupé de façon cohérente dans
-// le tableau de bord GoatCounter (même préfixe "event:", même format).
+// Suivi Umami : une seule interaction réelle avec la carte par session d'onglet.\n// Le nom historique de l'événement est conservé pour les statistiques existantes.
 const CLE_INTERACTION_ENVOYEE = "trajectoires:carte-interaction-envoyee";
 function suivreInteractionCarte() {
   if (typeof window === "undefined") return;

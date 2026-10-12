@@ -4,7 +4,7 @@ import FiltresPanel from "./components/FiltresPanel";
 import ChipsFiltresActifs from "./components/ChipsFiltresActifs";
 import CarteEtablissements from "./components/CarteEtablissements";
 import LogoTrajectoires from "./components/LogoTrajectoires";
-import { trackEvent } from "./utils/analytics";
+import { trackEvent, trackSessionEvent } from "./utils/analytics";
 import RechercheEtablissements from "./components/RechercheEtablissements";
 import Soutien from "./components/Soutien";
 import Comparaison, { AccesComparaison } from "./components/Comparaison";
@@ -29,26 +29,36 @@ export default function App() {
   );
 
   useEffect(() => {
+    trackSessionEvent("journey_app_opened", { entry_point: "map" });
     init();
   }, [init]);
+
+  useEffect(() => {
+    if (isLoaded) trackSessionEvent("journey_app_ready", { result: "success" });
+    if (erreurChargement) trackSessionEvent("journey_app_ready", { result: "error" });
+  }, [isLoaded, erreurChargement]);
 
   const fermerOnboarding = () => {
     localStorage.setItem(CLE_DEJA_VU, "1");
     trackEvent("onboarding-termine");
+    trackEvent("journey_onboarding_completed");
     setOnboardingOuvert(false);
   };
 
   const ouvrirOnboardingManuel = () => {
     trackEvent("onboarding-ouvert", "manuel (bouton ?)");
+    trackEvent("journey_onboarding_opened", undefined, { source: "help_button" });
     setOnboardingOuvert(true);
   };
 
   const ouvrirMentionsLegales = () => {
     trackEvent("mentions-legales-ouvertes");
+    trackEvent("journey_legal_opened");
     setMentionsOuvertes(true);
   };
 
   const ouvrirFiltres = () => {
+    trackEvent("journey_filters_opened", undefined, { surface: "mobile" });
     fermerPanneau();
     setFiltresOuverts(true);
   };
@@ -95,7 +105,7 @@ export default function App() {
         <FiltresPanel
           variant="flottant-desktop"
           ouvert={filtresOuverts}
-          onToggle={() => setFiltresOuverts((v) => !v)}
+          onToggle={() => setFiltresOuverts((v) => { if (!v) trackEvent("journey_filters_opened", undefined, { surface: "desktop" }); return !v; })}
         />
       </div>
 

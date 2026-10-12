@@ -37,7 +37,7 @@ export default function Soutien({ contexte = "carte", typeEtablissement }) {
     : "bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] md:bottom-5 md:right-5";
   const donnees = { contexte, ...(typeEtablissement ? { type_etablissement: typeEtablissement } : {}) };
   return <>
-    <button onClick={() => { trackEvent("soutien-ouvert", undefined, donnees); setOuvert(true); }} aria-label="Offrir un café pour soutenir Trajectoires" title="Soutenir Trajectoires" className={`fixed right-4 z-[1600] flex h-12 w-12 items-center justify-center rounded-full border border-white/30 bg-tableau-700 text-white shadow-panel transition-transform hover:scale-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tableau-700 ${position}`}>
+    <button onClick={() => { trackEvent("soutien-ouvert", undefined, donnees); trackEvent("journey_support_opened", undefined, { source: contexte }); setOuvert(true); }} aria-label="Offrir un café pour soutenir Trajectoires" title="Soutenir Trajectoires" className={`fixed right-4 z-[1600] flex h-12 w-12 items-center justify-center rounded-full border border-white/30 bg-tableau-700 text-white shadow-panel transition-transform hover:scale-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tableau-700 ${position}`}>
       <Coffee size={23} aria-hidden="true" className={agite ? "cafe-agite" : ""} />
     </button>
     {ouvert && createPortal(<MessageSoutien donnees={donnees} onClose={() => setOuvert(false)} />, document.body)}
@@ -65,7 +65,7 @@ function MessageSoutien({ donnees, onClose }) {
     <p className="mt-3 text-sm leading-relaxed text-encre-800">Je développe ce site pour faciliter l’accès aux données scolaires et continuer à l’enrichir. Un petit café m’aide à le faire vivre. Merci !</p>
     <a href="https://ko-fi.com/parisops" target="_blank" rel="noopener noreferrer" onClick={() => {
       useSoutienStore.getState().reporter(90);
-      trackEvent("soutien-clic", undefined, donnees);
+      trackEvent("soutien-clic", undefined, donnees); trackEvent("journey_support_outbound", undefined, { source: donnees.contexte });
       onClose();
     }} className="mt-5 flex min-h-11 items-center justify-center gap-2 rounded-lg bg-tableau-700 px-4 py-3 text-sm font-semibold text-white hover:bg-encre-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tableau-700">Offrir un café <ArrowUpRight size={16} aria-hidden="true" /><span className="sr-only">sur Ko-fi, dans un nouvel onglet</span></a>
     <button onClick={fermer} className="mt-2 min-h-11 w-full rounded-lg text-sm text-encre-600 hover:bg-sable-200">Plus tard</button>
