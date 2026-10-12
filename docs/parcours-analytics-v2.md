@@ -50,3 +50,41 @@ Ne jamais envoyer de nom, UAI, commune recherchée, adresse, texte tapé ni emai
 ## Analyse et limites
 
 Un test navigateur et un contrôle d'événements réels dans Umami restent nécessaires. Les événements générés avant déploiement ne sont pas rétroactifs. Les anciens événements restent en place et représentent une métrique différente.
+
+## Extensions du parcours (octobre 2026)
+
+| Événement | Déclenchement | Propriétés |
+| --- | --- | --- |
+| `journey_search_completed` | Sélection d'une suggestion | `result_type`, `result=selected` |
+| `journey_search_no_suggestions` | Première absence de suggestions | `entry_point` |
+| `journey_search_list_school_selected` | Sélection d'une école dans la liste des résultats d'une commune | `school_type` |
+| `journey_filter_changed` | Modification d'un filtre hors saisie libre | `filter_name`, `action` |
+| `journey_filters_reset` | Réinitialisation des filtres | — |
+| `journey_filters_opened` | Ouverture du panneau de filtres | `surface` |
+| `journey_school_details_loaded` | Première fiche chargée par niveau | `school_type` |
+| `journey_school_section_opened` | Expansion de la démographie | `section`, `school_type` |
+| `journey_comparison_dialog_opened` | Ouverture de la comparaison | `school_type`, `school_count` |
+| `journey_comparison_result_viewed` | Résultat de comparaison affiché | `school_type`, `school_count` |
+| `journey_onboarding_completed` | Validation de l'accueil | — |
+| `journey_onboarding_opened` | Consultation volontaire de l'accueil | `source` |
+| `journey_legal_opened` | Affichage des mentions légales | — |
+| `journey_support_opened` | Ouverture du module de soutien | `source` |
+| `journey_support_outbound` | Clic vers Ko-fi | `source` |
+
+Les jalons de détail et comparaison conservent une définition précise : un panneau chargé ou un comparatif affiché n'attestent pas d'une lecture attentive. `journey_search_no_suggestions` est un signal initial dédupliqué, et non un taux exhaustif d'échec de recherche. Les événements historiques Premium ne sont pas supprimés de la base Umami; l'encart Premium des fiches Lycée est retiré de l'interface.
+
+## Décisions produit mensuelles
+
+1. Comparer les appareils pour les conversions `app_ready → first_school_opened → exploration_qualified`.
+2. Étudier les utilisateurs ayant focalisé la recherche sans sélectionner de suggestion.
+3. Examiner combien explorent deux établissements et combien commencent puis aboutissent à une comparaison.
+4. Analyser par `school_type` les détails consultés, et la fréquence d'ouverture de la démographie.
+5. Mesurer les taux `support_opened → support_outbound` sans confondre clic sortant et don réalisé.
+
+## Recette complémentaire
+
+- Tester les filtres de type, statut, dispositif, IPS, département et leur réinitialisation; aucune recherche libre n'est transmise.
+- Tester une fiche Lycée sur ordinateur et mobile : **aucun encart Premium**; conserver tous les indicateurs et le bouton de comparaison.
+- Vérifier les fiches École/Collège : aucun changement involontaire d'affichage.
+- Vérifier les jalons d'ouverture de comparaison et de consultation détaillée.
+- Vérifier qu'un clic Ko-fi n'enregistre pas une conversion financière.
