@@ -4,7 +4,7 @@ import FiltresPanel from "./components/FiltresPanel";
 import ChipsFiltresActifs from "./components/ChipsFiltresActifs";
 import CarteEtablissements from "./components/CarteEtablissements";
 import LogoTrajectoires from "./components/LogoTrajectoires";
-import { trackEvent } from "./utils/analytics";
+import { trackEvent, trackSessionEvent } from "./utils/analytics";
 import RechercheEtablissements from "./components/RechercheEtablissements";
 import Soutien from "./components/Soutien";
 import Comparaison, { AccesComparaison } from "./components/Comparaison";
@@ -29,8 +29,14 @@ export default function App() {
   );
 
   useEffect(() => {
+    trackSessionEvent("journey_app_opened", { entry_point: "map" });
     init();
   }, [init]);
+
+  useEffect(() => {
+    if (isLoaded) trackSessionEvent("journey_app_ready", { result: "success" });
+    if (erreurChargement) trackSessionEvent("journey_app_ready", { result: "error" });
+  }, [isLoaded, erreurChargement]);
 
   const fermerOnboarding = () => {
     localStorage.setItem(CLE_DEJA_VU, "1");
