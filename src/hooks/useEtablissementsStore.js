@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { joinByUai } from "../utils/joinData";
-import { trackEvent, trackSessionEvent } from "../utils/analytics";
+import { firstInTab, trackEvent, trackSessionEvent } from "../utils/analytics";
 
 const URL_RUNTIME = `${import.meta.env.BASE_URL}data/runtime/`;
 let initialisation;
@@ -35,6 +35,7 @@ export const useEtablissementsStore = create((set, get) => ({
   historiqueResultatsCharge: false,
   aInteragi: false,
   fichesConsultees: [],
+  fichesParNiveau: {},
   comparaisonIds: [],
   comparaisonOuverte: false,
   comparerEtablissement: (codeUai) => {
@@ -64,25 +65,57 @@ export const useEtablissementsStore = create((set, get) => ({
 
   zonesChargees: {},
   zonesEnErreur: {},
-  init: () => {
+  init: (retry = false) => {
     if (get().isLoaded) return Promise.resolve();
     if (initialisation) return initialisation;
     set({ erreurChargement: null });
     initialisation = (async () => {
+      const start = performance.now();
+      const diagnostic = { attempt: retry ? "retry" : "initial" };
+      let stage = "request";
       try {
-        const { champs, lignes } = await lireJSON("catalogue");
-        const etablissements = lignes.map(ligne => Object.fromEntries(champs.map((cle, i) => [cle, ligne[i]])));
-        const ips = etablissements.map(e => e.ips_etablissement).filter(v => v != null);
-        const effectifs = etablissements.map(e => e.effectif_total).filter(v => v != null);
-        const bornesIps = ips.length ? [Math.floor(Math.min(...ips) / 10) * 10, Math.ceil(Math.max(...ips) / 10) * 10] : [50, 170];
+        const response = await fetch(`${URL_RUNTIME}catalogue.json`);
+        if (!response.ok) {
+          stage = "http";
+          diagnostic.http_status = response.status;
+          throw new Error(`HTTP ${response.status}`);
+        }
+        stage = "body";
+        const { champs, lignes } = await response.json();
+        stage = "prepare";
+        let minIps = Infinity, maxIps = -Infinity;
+        let minEffectif = Infinity, maxEffectif = -Infinity;
+        const etablissements = lignes.map(ligne => {
+          const e = {};
+          champs.forEach((cle, i) => { e[cle] = ligne[i]; });
+          if (e.ips_etablissement != null) {
+            minIps = Math.min(minIps, e.ips_etablissement);
+            maxIps = Math.max(maxIps, e.ips_etablissement);
+          }
+          if (e.effectif_total != null) {
+            minEffectif = Math.min(minEffectif, e.effectif_total);
+            maxEffectif = Math.max(maxEffectif, e.effectif_total);
+          }
+          return e;
+        });
+        const bornesIps = minIps === Infinity ? [50, 170] : [Math.floor(minIps / 10) * 10, Math.ceil(maxIps / 10) * 10];
         set(state => ({
           etablissements, isLoaded: true, indicateursCharges: true, bornesIps,
-          bornesEffectif: effectifs.length ? [Math.min(...effectifs), Math.max(...effectifs)] : [0, 2000],
+          bornesEffectif: minEffectif === Infinity ? [0, 2000] : [minEffectif, maxEffectif],
           filtres: { ...state.filtres, ipsMin: bornesIps[0], departementsDisponibles: [...new Set(etablissements.map(e => e.departement).filter(Boolean))].sort() },
         }));
+        diagnostic.result = "success";
       } catch (err) {
-        set({ erreurChargement: err.message ?? "Erreur de chargement des données" });
-      } finally { initialisation = null; }
+        diagnostic.result = "error";
+        diagnostic.stage = stage;
+        diagnostic.error_kind = ["TypeError", "SyntaxError", "RangeError", "AbortError"].includes(err?.name) ? err.name : "other";
+        if (typeof navigator !== "undefined") diagnostic.online = navigator.onLine;
+        set({ erreurChargement: err?.message || "Erreur de chargement des données" });
+      } finally {
+        diagnostic.duration_ms = Math.round(performance.now() - start);
+        trackEvent("app_ready", undefined, diagnostic);
+        initialisation = null;
+      }
     })();
     return initialisation;
   },
@@ -158,24 +191,23 @@ export const useEtablissementsStore = create((set, get) => ({
   selectionnerEtablissement: (code_uai) => {
     const etablissement = get().etablissements.find((e) => e.code_uai === code_uai);
     if (!etablissement) return;
-    if (etablissement) {
-      const donnees = { type_etablissement: etablissement.type_etablissement };
-      if (get().etablissementSelectionneId !== code_uai) {
-        trackEvent("school_opened", undefined, { school_type: etablissement.type_etablissement, source: get().filtres.rechercheUai === code_uai ? "search" : "map_or_related" });
-      }
-      const visites = get().fichesConsultees;
+    const state = get();
+    if (state.etablissementSelectionneId !== code_uai) {
+      const visites = state.fichesConsultees;
+      const niveau = etablissement.type_etablissement;
+      const properties = {
+        school_type: niveau,
+        source: state.filtres.rechercheUai === code_uai ? "search" : "map_or_related",
+      };
       if (!visites.includes(code_uai)) {
-        const visitesMemeNiveau = visites.filter(id => get().etablissements.find(e => e.code_uai === id)?.type_etablissement === etablissement.type_etablissement).length;
-        trackEvent("school_distinct_opened", undefined, { school_type: etablissement.type_etablissement, ordinal_bucket: visitesMemeNiveau === 0 ? "first" : visitesMemeNiveau === 1 ? "second" : "third_or_more" });
-        if (visitesMemeNiveau === 1) {
-          trackSessionEvent("school_level_qualified", { type_etablissement: etablissement.type_etablissement, rule: "two_distinct_schools_same_level" });
-        }
-        if (visites.length > 0) {
-          trackSessionEvent("exploration_qualified", { rule: "two_distinct_schools" });
-        }
-        if (visites.length === 0) trackSessionEvent("first_school_opened", { school_type: etablissement.type_etablissement });
-        set({ fichesConsultees: [...visites, code_uai] });
+        const duNiveau = state.fichesParNiveau[niveau] ?? 0;
+        properties.ordinal_bucket = duNiveau === 0 ? "first" : duNiveau === 1 ? "second" : "third_or_more";
+        if (visites.length === 0 && firstInTab("first_school_opened", niveau)) properties.first_school = true;
+        if (visites.length > 0 && firstInTab("exploration_qualified")) properties.exploration_qualified = true;
+        if (duNiveau === 1 && firstInTab("school_level_qualified", niveau)) properties.level_qualified = true;
+        set({ fichesConsultees: [...visites, code_uai], fichesParNiveau: { ...state.fichesParNiveau, [niveau]: duNiveau + 1 } });
       }
+      trackEvent("school_opened", undefined, properties);
     }
     set({ etablissementSelectionneId: code_uai, aInteragi: true });
     return get().chargerDetailsSiBesoin(code_uai);
