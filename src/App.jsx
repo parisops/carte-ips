@@ -33,11 +33,6 @@ export default function App() {
     init();
   }, [init]);
 
-  useEffect(() => {
-    if (isLoaded) trackSessionEvent("app_ready", { result: "success" });
-    if (erreurChargement) trackSessionEvent("app_ready", { result: "error" });
-  }, [isLoaded, erreurChargement]);
-
   const fermerOnboarding = () => {
     localStorage.setItem(CLE_DEJA_VU, "1");
     trackEvent("onboarding_completed");
@@ -70,8 +65,9 @@ export default function App() {
           </div>
         )}
         {erreurChargement && (
-          <div className="flex h-full items-center justify-center bg-sable-50 px-6 text-center font-body text-sm text-craie-600">
-            Impossible de charger les données ({erreurChargement}).
+          <div className="flex h-full flex-col items-center justify-center gap-3 bg-sable-50 px-6 text-center font-body text-sm text-craie-600">
+            <p role="alert">Impossible de charger les données des établissements.</p>
+            <button type="button" onClick={() => init(true)} className="min-h-11 rounded-lg bg-tableau-700 px-4 text-white">Réessayer</button>
           </div>
         )}
       </div>

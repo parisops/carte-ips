@@ -1,4 +1,4 @@
-# Umami tracking v3 — English taxonomy
+# Umami tracking v4 — English taxonomy
 
 All newly emitted custom events use English snake_case. The old events remain available historically in Umami but are no longer emitted.
 
@@ -8,7 +8,7 @@ All newly emitted custom events use English snake_case. The old events remain av
 | Search | `search_focused`, `search_started`, `search_submitted`, `search_no_suggestions`, `search_result_selected`, `search_list_school_selected` |
 | Filters | `filters_opened`, `filter_changed`, `filters_reset` |
 | Map | `map_interacted` |
-| Schools | `school_opened`, `first_school_opened`, `school_distinct_opened`, `school_level_qualified`, `exploration_qualified`, `school_details_loaded`, `school_section_opened` |
+| Schools | `school_opened`, `school_details_loaded`, `school_section_opened` |
 | Comparison | `comparison_offered`, `comparison_started`, `comparison_pair_ready`, `comparison_dialog_opened`, `comparison_completed`, `comparison_school_removed` |
 | Support | `support_button_viewed`, `support_opened`, `support_dialog_viewed`, `support_outbound`, `support_closed` |
 | Legal | `legal_opened` |
@@ -23,14 +23,23 @@ Canonical keys are `school_type`, `school_count`, `source`, `result_type`, `filt
 
 ## Recommended product analysis
 
-1. Arrivals → school openings: `app_ready` → `first_school_opened`.
-2. Search activation: `search_started` → `search_result_selected` → `school_opened`.
-3. Qualified exploration by school level: `school_level_qualified`, segmented by `school_type`.
-4. Comparison: `comparison_started` → `comparison_pair_ready` → `comparison_completed`.
-5. Mobile vs desktop: use Umami device dimensions.
-6. `school_distinct_opened` with `ordinal_bucket` to compare depth of exploration.
+Keep the deployment date as a reporting boundary. Sum each historical event count with its corresponding filtered opening count after deployment. For visit rates, take the union of matching visit IDs before dividing by all visits. Keep grouping by device, source and school type as before.
 
-Session milestones use browser sessionStorage and do not exactly correspond to Umami sessions. Counting unique schools currently relies on client application state, so reloading can reset the distinct-school list. These measurements are directional, not durable user retention.
+| Historical event | Equivalent after deployment |
+|---|---|
+| `school_opened` | All `school_opened` events, including repeats |
+| `school_distinct_opened` | Openings with an `ordinal_bucket` of `first`, `second` or `third_or_more` (per level in the current page instance) |
+| `first_school_opened` | Openings with `first_school=true` |
+| `exploration_qualified` | Openings with `exploration_qualified=true` |
+| `school_level_qualified` | Openings with `level_qualified=true`, segmented by `school_type` |
+
+The three flags retain the previous tab-level storage keys. Reopening a school retains its opening and source but does not count as a new distinct school. Reloading resets the in-memory distinct list as before. Existing funnels that refer to retired event names need property filters or a calculation from the export. The comparison funnel and search and filter events retain their definitions.
+
+## Catalogue loading
+
+Each completed catalogue attempt emits one `app_ready` with `attempt` (initial/retry), `result` and elapsed `duration_ms`. Errors include `stage` (request/http/body/prepare), a bounded `error_kind`, online status when available and HTTP status for HTTP failures. The body stage includes reading and decoding JSON. Exception text and URLs are excluded. Previously this event was deduplicated per tab across outcomes.
+
+For the initial failure rate, count distinct visits with an initial error divided by distinct visits with any initial result. Segment by OS, browser and device. For recovery, count failed visits followed by a successful retry in that visit. Also monitor visits with a page view and no loading result separately: closing the tab, analytics blocking and a process termination can leave no diagnostic.
 
 ## QA
 

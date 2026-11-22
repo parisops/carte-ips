@@ -24,15 +24,19 @@ export function trackEvent(name, _title, properties = {}) {
 
 // Deduplicated once per tab and school level (not equivalent to an Umami session).
 const seenInMemory = new Set();
-export function trackSessionEvent(name, properties = {}) {
-  if (typeof window === "undefined") return;
-  const level = properties.school_type ?? properties.type_etablissement ?? "all";
+export function firstInTab(name, level = "all") {
+  if (typeof window === "undefined") return false;
   const key = `trajectoires:analytics:v3:${name}:${level}`;
-  if (seenInMemory.has(key)) return;
+  if (seenInMemory.has(key)) return false;
   try {
-    if (window.sessionStorage?.getItem(key)) return;
+    if (window.sessionStorage?.getItem(key)) return false;
     window.sessionStorage?.setItem(key, "1");
   } catch { /* Storage may be disabled. */ }
   seenInMemory.add(key);
-  trackEvent(name, undefined, properties);
+  return true;
+}
+
+export function trackSessionEvent(name, properties = {}) {
+  const level = properties.school_type ?? properties.type_etablissement;
+  if (firstInTab(name, level)) trackEvent(name, undefined, properties);
 }
